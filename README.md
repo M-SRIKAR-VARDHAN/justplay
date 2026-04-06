@@ -6,7 +6,7 @@
 
 The web forgot it could be fun. Everything needs an account, a subscription, a cookie banner.
 
-Meanwhile your browser got mass — WebGL, Web Audio, compute shaders — and nobody's using it to make things that make you go *"wait, this runs in a BROWSER?"*
+Meanwhile your browser got mass — WebGL, Web Audio, compute shaders and nobody's using it to make things that make you go *"wait, this runs in a BROWSER?"*
 
 **justplay** is a collection of interactive experiments built entirely client-side. No backend. No frameworks. No npm install. Just open a URL and play.
 

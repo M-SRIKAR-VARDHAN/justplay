@@ -8,12 +8,14 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0f; }
   canvas { display: block; touch-action: none; }
+
   #ui {
     position: fixed; top: 0; left: 0; right: 0;
     display: flex; justify-content: space-between; align-items: flex-start;
     padding: 16px; pointer-events: none; z-index: 10;
   }
   #ui > * { pointer-events: auto; }
+
   .btn {
     background: rgba(255,255,255,0.07);
     border: 1px solid rgba(255,255,255,0.15);
@@ -24,13 +26,99 @@
     cursor: pointer;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    transition: background 0.2s, color 0.2s;
+    transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
     user-select: none;
     -webkit-user-select: none;
   }
   .btn:hover { background: rgba(255,255,255,0.13); color: #fff; }
   .btn-back { font-size: 18px; padding: 6px 12px; text-decoration: none; display: inline-block; }
   .btn-group { display: flex; gap: 8px; }
+
+  /* Preset bar at bottom */
+  #preset-bar {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 10; pointer-events: auto;
+    padding: 6px 12px;
+    background: rgba(10, 10, 20, 0.7);
+    border: 1px solid rgba(100, 200, 255, 0.15);
+    border-radius: 30px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    max-width: 95vw;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  #preset-bar::-webkit-scrollbar { display: none; }
+  .preset-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.6);
+    font: 13px/1 'Segoe UI', system-ui, sans-serif;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.25s;
+    user-select: none;
+    -webkit-user-select: none;
+    white-space: nowrap;
+  }
+  .preset-btn:hover {
+    background: rgba(100, 200, 255, 0.12);
+    color: rgba(255,255,255,0.9);
+    border-color: rgba(100, 200, 255, 0.3);
+  }
+  .preset-btn.active {
+    background: rgba(100, 200, 255, 0.2);
+    color: #fff;
+    border-color: rgba(100, 200, 255, 0.5);
+    box-shadow: 0 0 15px rgba(100, 200, 255, 0.15);
+  }
+
+  /* Play/Pause button */
+  #btn-play {
+    font-size: 16px;
+    padding: 6px 12px;
+    min-width: 38px;
+    text-align: center;
+  }
+  #btn-play.playing {
+    background: rgba(100, 200, 255, 0.15);
+    border-color: rgba(100, 200, 255, 0.3);
+    color: rgba(100, 200, 255, 0.9);
+  }
+
+  /* Song title overlay */
+  #song-title {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font: 600 48px/1 'Segoe UI', system-ui, sans-serif;
+    color: rgba(100, 200, 255, 0.9);
+    text-shadow: 0 0 40px rgba(100, 200, 255, 0.4), 0 0 80px rgba(100, 200, 255, 0.15);
+    pointer-events: none;
+    z-index: 20;
+    opacity: 0;
+    transition: opacity 0.6s;
+    text-align: center;
+    letter-spacing: 2px;
+  }
+  #song-title.visible { opacity: 1; }
+
+  /* Combo counter */
+  #combo-counter {
+    position: fixed; top: 70px; left: 50%;
+    transform: translateX(-50%);
+    font: 700 32px/1 'Segoe UI', system-ui, sans-serif;
+    color: rgba(255, 220, 100, 0.9);
+    text-shadow: 0 0 20px rgba(255, 200, 50, 0.5), 0 0 40px rgba(255, 150, 50, 0.2);
+    pointer-events: none;
+    z-index: 15;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.15s;
+    text-align: center;
+  }
+
+  /* Help panel */
   #help-panel {
     display: none;
     position: fixed; top: 50%; left: 50%;
@@ -41,7 +129,8 @@
     padding: 32px;
     color: rgba(255,255,255,0.85);
     font: 15px/1.7 'Segoe UI', system-ui, sans-serif;
-    max-width: 380px;
+    max-width: 420px;
+    width: 90%;
     z-index: 100;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -69,6 +158,12 @@
     background: rgba(0,0,0,0.5);
     z-index: 99;
   }
+
+  @media (max-width: 600px) {
+    #preset-bar { gap: 4px; padding: 5px 8px; bottom: 12px; }
+    .preset-btn { padding: 7px 10px; font-size: 11px; }
+    #song-title { font-size: 32px; }
+  }
 </style>
 </head>
 <body>
@@ -77,19 +172,34 @@
 <div id="ui">
   <a href="/justplay/" class="btn btn-back" title="Back">&larr;</a>
   <div class="btn-group">
+    <button class="btn" id="btn-play" title="Play / Pause">&#9654;</button>
     <button class="btn" id="btn-clear">Clear</button>
     <button class="btn" id="btn-help">?</button>
   </div>
 </div>
+
+<div id="preset-bar">
+  <button class="preset-btn active" data-preset="twinkle">Twinkle</button>
+  <button class="preset-btn" data-preset="canon">Canon</button>
+  <button class="preset-btn" data-preset="ode">Ode to Joy</button>
+  <button class="preset-btn" data-preset="elise">Fur Elise</button>
+  <button class="preset-btn" data-preset="arohanam">Arohanam</button>
+  <button class="preset-btn" data-preset="bhairavi">Bhairavi</button>
+  <button class="preset-btn" data-preset="yaman">Yaman</button>
+  <button class="preset-btn" data-preset="sandbox">Sandbox</button>
+</div>
+
+<div id="song-title"></div>
+<div id="combo-counter"></div>
 
 <div id="overlay"></div>
 <div id="help-panel">
   <h2>Rube Goldberg Music Machine</h2>
   <p><kbd>Click</kbd> &mdash; Spawn a ball</p>
   <p><kbd>Click + Drag</kbd> &mdash; Draw a ramp/surface</p>
-  <p>Balls fall with gravity and bounce off surfaces, walls, and each other.</p>
-  <p>Every collision plays a pentatonic note &mdash; pitch and volume scale with impact force.</p>
-  <p>Draw ramps to guide balls and create musical chains.</p>
+  <p>Pick a preset below to load a premade machine that plays a melody.</p>
+  <p>Balls cascade down ramps and bumpers &mdash; each hit plays a note tuned to its height on screen.</p>
+  <p>Use <kbd>&#9654;/&#9646;&#9646;</kbd> to start/stop the auto-dropper. Draw extra ramps on top of presets!</p>
   <button class="btn close-help" id="btn-close-help">Got it</button>
 </div>
 
@@ -97,7 +207,9 @@
 (function() {
   "use strict";
 
-  // --- Canvas setup ---
+  /* ============================================================
+     CANVAS
+  ============================================================ */
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
   let W, H;
@@ -105,72 +217,108 @@
   function resize() {
     W = canvas.width = window.innerWidth;
     H = canvas.height = window.innerHeight;
+    ctx.fillStyle = '#0a0a0f';
+    ctx.fillRect(0, 0, W, H);
   }
   resize();
   window.addEventListener('resize', resize);
 
-  // --- Constants ---
-  const GRAVITY = 0.3;
+  /* ============================================================
+     CONSTANTS
+  ============================================================ */
+  const BASE_GRAVITY = 0.3;
+  let gravity = BASE_GRAVITY;
   const BOUNCE = 0.7;
   const FRICTION = 0.99;
-  const TRAIL_ALPHA = 0.15;
+  const TRAIL_ALPHA = 0.12;
   const MAX_BALLS = 200;
-  const MAX_OSCILLATORS = 8;
+  const MAX_OSCILLATORS = 10;
   const MIN_DRAG_DIST = 15;
-  const BALL_MIN_R = 8;
-  const BALL_MAX_R = 15;
+  const BALL_R = 10;
+  const BUMPER_BOUNCE = 1.4;
 
-  // --- State ---
-  let balls = [];
-  let surfaces = [];
-  let particles = [];
-  let activeOscCount = 0;
-  let drawing = false;
-  let drawStart = null;
-  let drawEnd = null;
-  let spawnPending = false;
-  let pointerDownTime = 0;
-  let pointerMoved = false;
-
-  // --- Pentatonic scale frequencies (C, D, E, G, A) across 3 octaves ---
-  const BASE_NOTES = [261.63, 293.66, 329.63, 392.00, 440.00]; // C4, D4, E4, G4, A4
-  const PENTA = [];
-  for (let oct = -1; oct <= 1; oct++) {
-    for (const f of BASE_NOTES) {
-      PENTA.push(f * Math.pow(2, oct));
+  /* ============================================================
+     NOTE / FREQUENCY SYSTEM
+  ============================================================ */
+  const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const ALL_NOTES = {};
+  for (let oct = 2; oct <= 7; oct++) {
+    for (let i = 0; i < 12; i++) {
+      const name = NOTE_NAMES[i] + oct;
+      ALL_NOTES[name] = 440 * Math.pow(2, (oct - 4) + (i - 9) / 12);
     }
   }
-  // PENTA spans C3..A5
 
-  // --- Web Audio ---
+  // Indian classical swaras (Sa=C base, Shadja Madhyam)
+  // Sa Re Ga Ma Pa Da Ni across octaves 4 and 5
+  // Using C as Sa (Shadja)
+  const SWARA_MAP = {
+    'Sa': 'C', 'Re': 'D', 'Ga': 'E', 'Ma': 'F', 'Pa': 'G', 'Da': 'A', 'Ni': 'B',
+    // Komal (flat) variants
+    'Re♭': 'C#', 'Ga♭': 'D#', 'Da♭': 'G#', 'Ni♭': 'A#',
+    // Tivra (sharp) Ma
+    'Ma♯': 'F#'
+  };
+  for (let oct = 3; oct <= 6; oct++) {
+    for (const [swara, western] of Object.entries(SWARA_MAP)) {
+      ALL_NOTES[swara + oct] = ALL_NOTES[western + oct];
+    }
+  }
+
+  function noteFreq(name) {
+    return ALL_NOTES[name] || 440;
+  }
+
+  function yToHue(y) {
+    const t = y / H;
+    return 280 - t * 100;
+  }
+
+  function noteToHue(name) {
+    const idx = NOTE_NAMES.indexOf(name.replace(/\d+/, ''));
+    return (idx / 12) * 360;
+  }
+
+  // Get note name from Y position (for floating notes)
+  const PENTA_SCALE = ['C','D','E','G','A'];
+  function noteNameAtY(y) {
+    const t = Math.max(0, Math.min(1, y / H));
+    const totalNotes = PENTA_SCALE.length * 3;
+    const idx = Math.floor((1 - t) * (totalNotes - 1));
+    const oct = 3 + Math.floor(idx / PENTA_SCALE.length);
+    const noteIdx = idx % PENTA_SCALE.length;
+    return PENTA_SCALE[noteIdx] + oct;
+  }
+
+  /* ============================================================
+     WEB AUDIO
+  ============================================================ */
   let audioCtx = null;
+  let masterGain = null;
   let delayNode = null;
   let delayGain = null;
+  let activeOscCount = 0;
 
   function initAudio() {
     if (audioCtx) return;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    // Delay/reverb effect
-    delayNode = audioCtx.createDelay(0.5);
-    delayNode.delayTime.value = 0.25;
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.6;
+    masterGain.connect(audioCtx.destination);
+
+    delayNode = audioCtx.createDelay(0.6);
+    delayNode.delayTime.value = 0.3;
     delayGain = audioCtx.createGain();
-    delayGain.gain.value = 0.2;
+    delayGain.gain.value = 0.18;
     delayNode.connect(delayGain);
     delayGain.connect(delayNode);
-    delayGain.connect(audioCtx.destination);
+    delayGain.connect(masterGain);
   }
 
-  function playNote(velocity, force) {
+  function playNoteFreq(freq, vol) {
     if (!audioCtx) return;
     if (activeOscCount >= MAX_OSCILLATORS) return;
-
-    // Map velocity to note index
-    const speed = Math.sqrt(velocity);
-    const idx = Math.min(PENTA.length - 1, Math.max(0, Math.floor((speed / 12) * PENTA.length)));
-    const freq = PENTA[idx];
-
-    // Volume from force, clamped
-    const vol = Math.min(0.35, Math.max(0.03, force / 25));
+    vol = Math.min(0.35, Math.max(0.02, vol));
 
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -179,52 +327,225 @@
 
     const now = audioCtx.currentTime;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(vol, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(vol * 0.3, now + 0.15);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    gain.gain.linearRampToValueAtTime(vol, now + 0.012);
+    gain.gain.linearRampToValueAtTime(vol * 0.6, now + 0.08);
+    gain.gain.linearRampToValueAtTime(vol * 0.35, now + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
 
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(masterGain);
     gain.connect(delayNode);
 
     osc.start(now);
-    osc.stop(now + 0.4);
-
+    osc.stop(now + 0.55);
     activeOscCount++;
     osc.onended = () => { activeOscCount--; };
   }
 
-  // --- Ball ---
-  function createBall(x, y) {
-    if (balls.length >= MAX_BALLS) return;
-    const r = BALL_MIN_R + Math.random() * (BALL_MAX_R - BALL_MIN_R);
-    balls.push({
-      x, y, r,
-      vx: (Math.random() - 0.5) * 2,
-      vy: 0,
-      hue: Math.random() * 360,
-      life: 1
-    });
+  function playNoteAtY(y, force) {
+    if (!audioCtx) return;
+    const t = Math.max(0, Math.min(1, y / H));
+    const totalNotes = PENTA_SCALE.length * 3;
+    const idx = Math.floor((1 - t) * (totalNotes - 1));
+    const oct = 3 + Math.floor(idx / PENTA_SCALE.length);
+    const noteIdx = idx % PENTA_SCALE.length;
+    const name = PENTA_SCALE[noteIdx] + oct;
+    const freq = noteFreq(name);
+    const vol = Math.min(0.3, Math.max(0.03, force / 20));
+    playNoteFreq(freq, vol);
   }
 
-  // --- Particles ---
-  function spawnParticles(x, y, hue, count) {
+  /* ============================================================
+     STATE
+  ============================================================ */
+  let balls = [];
+  let surfaces = [];     // {x1,y1,x2,y2, note?, flashTimer, waveOffset, waveTimer}
+  let bumpers = [];       // {x,y,r, note?, hue, flashTimer, pulseTimer, pulseScale}
+  let particles = [];
+  let floatingNotes = []; // floating music note symbols
+  let ripples = [];       // expanding ring effects
+  let drawing = false;
+  let drawStart = null;
+  let drawEnd = null;
+  let pointerMoved = false;
+
+  // Auto-dropper state
+  let autoDropper = null;
+  let isPlaying = false;
+  let dropTimeouts = [];
+
+  let currentPreset = 'twinkle';
+
+  // Screen shake
+  let shakeX = 0, shakeY = 0, shakeDecay = 0;
+
+  // Combo counter
+  let comboCount = 0;
+  let lastHitTime = 0;
+  const COMBO_TIMEOUT = 2000; // ms
+  const comboEl = document.getElementById('combo-counter');
+
+  // Speed ramp
+  let presetStartTime = 0;
+  let speedRampActive = false;
+
+  /* ============================================================
+     PARTICLES (improved)
+  ============================================================ */
+  function spawnParticles(x, y, hue, count, starburst) {
+    const isStarburst = starburst || false;
     for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 1 + Math.random() * 3;
+      const angle = isStarburst ? (i / count) * Math.PI * 2 : Math.random() * Math.PI * 2;
+      const speed = isStarburst ? (3 + Math.random() * 3) : (1.5 + Math.random() * 4);
+      const isStreak = Math.random() > 0.6; // 40% chance of streak particle
       particles.push({
         x, y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         life: 1,
-        decay: 0.03 + Math.random() * 0.04,
+        decay: 0.025 + Math.random() * 0.035,
         hue: hue + (Math.random() - 0.5) * 40,
-        r: 1 + Math.random() * 2
+        r: 1.5 + Math.random() * 2.5,
+        isStreak: isStreak,
+        trail: [{x, y}, {x, y}, {x, y}] // micro-trail (3 frames)
       });
     }
   }
 
-  // --- Physics helpers ---
+  /* ============================================================
+     FLOATING MUSIC NOTES
+  ============================================================ */
+  const MAX_FLOATING_NOTES = 30;
+  const NOTE_SYMBOLS = ['\u266A', '\u266B'];
+
+  function spawnFloatingNote(x, y, hue, noteName) {
+    if (floatingNotes.length >= MAX_FLOATING_NOTES) {
+      floatingNotes.shift();
+    }
+    floatingNotes.push({
+      x: x,
+      y: y,
+      vx: (Math.random() - 0.5) * 1.2,
+      vy: -1.5 - Math.random() * 0.8,
+      life: 1,
+      decay: 1 / 90, // ~1.5 seconds at 60fps
+      hue: hue,
+      symbol: NOTE_SYMBOLS[Math.floor(Math.random() * NOTE_SYMBOLS.length)],
+      noteName: noteName || ''
+    });
+  }
+
+  /* ============================================================
+     RIPPLE EFFECT
+  ============================================================ */
+  const MAX_RIPPLES = 20;
+
+  function spawnRipple(x, y, hue) {
+    if (ripples.length >= MAX_RIPPLES) {
+      ripples.shift();
+    }
+    ripples.push({
+      x: x,
+      y: y,
+      radius: 5,
+      maxRadius: 60,
+      life: 0.5,
+      hue: hue
+    });
+  }
+
+  /* ============================================================
+     POP PARTICLE BURST (ball death)
+  ============================================================ */
+  function spawnPopBurst(x, y, hue) {
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const speed = 2 + Math.random() * 2;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.06 + Math.random() * 0.04,
+        hue: hue + (Math.random() - 0.5) * 60,
+        r: 1 + Math.random() * 2,
+        isStreak: false,
+        trail: [{x, y}, {x, y}, {x, y}]
+      });
+    }
+  }
+
+  /* ============================================================
+     SCREEN SHAKE
+  ============================================================ */
+  function triggerShake(force) {
+    const intensity = Math.min(4, force * 0.5);
+    shakeX = (Math.random() - 0.5) * intensity * 2;
+    shakeY = (Math.random() - 0.5) * intensity * 2;
+    shakeDecay = 10;
+  }
+
+  /* ============================================================
+     COMBO COUNTER
+  ============================================================ */
+  function registerHit() {
+    const now = Date.now();
+    if (now - lastHitTime < COMBO_TIMEOUT) {
+      comboCount++;
+    } else {
+      comboCount = 1;
+    }
+    lastHitTime = now;
+    updateComboDisplay();
+  }
+
+  function updateComboDisplay() {
+    if (comboCount >= 2) {
+      comboEl.textContent = '\u00D7' + comboCount;
+      comboEl.style.opacity = '1';
+      const scale = Math.min(1.8, 1 + comboCount * 0.08);
+      comboEl.style.transform = 'translateX(-50%) scale(' + scale + ')';
+      if (comboCount >= 5) {
+        comboEl.style.color = 'rgba(255, 150, 50, 1)';
+        comboEl.style.textShadow = '0 0 30px rgba(255, 100, 0, 0.7), 0 0 60px rgba(255, 50, 0, 0.3)';
+      } else {
+        comboEl.style.color = 'rgba(255, 220, 100, 0.9)';
+        comboEl.style.textShadow = '0 0 20px rgba(255, 200, 50, 0.5), 0 0 40px rgba(255, 150, 50, 0.2)';
+      }
+    }
+  }
+
+  function checkComboTimeout() {
+    if (comboCount > 0 && Date.now() - lastHitTime > COMBO_TIMEOUT) {
+      comboCount = 0;
+      comboEl.style.opacity = '0';
+      comboEl.style.transform = 'translateX(-50%) scale(1)';
+    }
+  }
+
+  /* ============================================================
+     BALL CREATION
+  ============================================================ */
+  function createBall(x, y, vx, vy) {
+    if (balls.length >= MAX_BALLS) return;
+    balls.push({
+      x, y, r: BALL_R,
+      vx: vx || (Math.random() - 0.5) * 1.5,
+      vy: vy || 0,
+      hue: Math.random() * 360,
+      life: 1,
+      age: 0,
+      slowFrames: 0,
+      squashX: 1,
+      squashY: 1,
+      squashTimer: 0,
+      trail: [] // position trail for ball trail enhancement
+    });
+  }
+
+  /* ============================================================
+     PHYSICS HELPERS
+  ============================================================ */
   function pointToSegmentDist(px, py, ax, ay, bx, by) {
     const dx = bx - ax, dy = by - ay;
     const len2 = dx * dx + dy * dy;
@@ -234,93 +555,963 @@
     const cx = ax + t * dx, cy = ay + t * dy;
     const distX = px - cx, distY = py - cy;
     const dist = Math.hypot(distX, distY);
-    // Normal pointing from segment toward point
     const nx = dist > 0 ? distX / dist : 0;
     const ny = dist > 0 ? distY / dist : -1;
     return { dist, nx, ny, cx, cy };
   }
 
-  // --- Update ---
+  /* ============================================================
+     PRESETS
+  ============================================================ */
+
+  function makePresets() {
+    return {
+      twinkle: {
+        title: 'Twinkle Twinkle Little Star',
+        surfaces: [
+          { x1f: 0.18, y1f: 0.14, x2f: 0.28, y2f: 0.16, note: 'C5' },
+          { x1f: 0.32, y1f: 0.14, x2f: 0.42, y2f: 0.16, note: 'C5' },
+          { x1f: 0.48, y1f: 0.22, x2f: 0.58, y2f: 0.24, note: 'G5' },
+          { x1f: 0.62, y1f: 0.22, x2f: 0.72, y2f: 0.24, note: 'G5' },
+          { x1f: 0.42, y1f: 0.30, x2f: 0.52, y2f: 0.32, note: 'A5' },
+          { x1f: 0.56, y1f: 0.30, x2f: 0.66, y2f: 0.32, note: 'A5' },
+          { x1f: 0.35, y1f: 0.38, x2f: 0.50, y2f: 0.40, note: 'G5' },
+          { x1f: 0.50, y1f: 0.48, x2f: 0.60, y2f: 0.50, note: 'F5' },
+          { x1f: 0.64, y1f: 0.48, x2f: 0.74, y2f: 0.50, note: 'F5' },
+          { x1f: 0.38, y1f: 0.56, x2f: 0.48, y2f: 0.58, note: 'E5' },
+          { x1f: 0.52, y1f: 0.56, x2f: 0.62, y2f: 0.58, note: 'E5' },
+          { x1f: 0.46, y1f: 0.64, x2f: 0.56, y2f: 0.66, note: 'D5' },
+          { x1f: 0.60, y1f: 0.64, x2f: 0.70, y2f: 0.66, note: 'D5' },
+          { x1f: 0.38, y1f: 0.74, x2f: 0.55, y2f: 0.76, note: 'C5' },
+          { x1f: 0.26, y1f: 0.16, x2f: 0.34, y2f: 0.13 },
+          { x1f: 0.70, y1f: 0.24, x2f: 0.78, y2f: 0.20 },
+          { x1f: 0.22, y1f: 0.30, x2f: 0.30, y2f: 0.26 },
+          { x1f: 0.72, y1f: 0.50, x2f: 0.80, y2f: 0.46 },
+          { x1f: 0.30, y1f: 0.58, x2f: 0.22, y2f: 0.54 },
+          { x1f: 0.68, y1f: 0.66, x2f: 0.76, y2f: 0.62 },
+        ],
+        bumpers: [
+          { xf: 0.45, yf: 0.18, r: 12 },
+          { xf: 0.55, yf: 0.34, r: 10 },
+          { xf: 0.40, yf: 0.44, r: 11 },
+          { xf: 0.65, yf: 0.60, r: 10 },
+          { xf: 0.50, yf: 0.70, r: 12 },
+        ],
+        drops: [
+          { xf: 0.22, delay: 0 },
+          { xf: 0.36, delay: 600 },
+          { xf: 0.52, delay: 1200 },
+          { xf: 0.66, delay: 1800 },
+          { xf: 0.46, delay: 2400 },
+          { xf: 0.60, delay: 3000 },
+          { xf: 0.42, delay: 3600 },
+          { xf: 0.54, delay: 4800 },
+          { xf: 0.68, delay: 5400 },
+          { xf: 0.42, delay: 6000 },
+          { xf: 0.56, delay: 6600 },
+          { xf: 0.50, delay: 7200 },
+          { xf: 0.64, delay: 7800 },
+          { xf: 0.42, delay: 8400 },
+        ],
+        melody: [
+          { note: 'C5', delay: 200 },
+          { note: 'C5', delay: 800 },
+          { note: 'G5', delay: 1400 },
+          { note: 'G5', delay: 2000 },
+          { note: 'A5', delay: 2600 },
+          { note: 'A5', delay: 3200 },
+          { note: 'G5', delay: 3800 },
+          { note: 'F5', delay: 5000 },
+          { note: 'F5', delay: 5600 },
+          { note: 'E5', delay: 6200 },
+          { note: 'E5', delay: 6800 },
+          { note: 'D5', delay: 7400 },
+          { note: 'D5', delay: 8000 },
+          { note: 'C5', delay: 8600 },
+        ]
+      },
+
+      canon: {
+        title: "Pachelbel's Canon",
+        surfaces: [
+          { x1f: 0.15, y1f: 0.10, x2f: 0.40, y2f: 0.14, note: 'D5' },
+          { x1f: 0.60, y1f: 0.18, x2f: 0.85, y2f: 0.22, note: 'F#5' },
+          { x1f: 0.15, y1f: 0.26, x2f: 0.40, y2f: 0.30, note: 'A5' },
+          { x1f: 0.60, y1f: 0.34, x2f: 0.85, y2f: 0.38, note: 'B5' },
+          { x1f: 0.15, y1f: 0.42, x2f: 0.40, y2f: 0.46, note: 'G5' },
+          { x1f: 0.60, y1f: 0.50, x2f: 0.85, y2f: 0.54, note: 'F#5' },
+          { x1f: 0.15, y1f: 0.58, x2f: 0.40, y2f: 0.62, note: 'E5' },
+          { x1f: 0.60, y1f: 0.66, x2f: 0.85, y2f: 0.70, note: 'D5' },
+          { x1f: 0.38, y1f: 0.14, x2f: 0.62, y2f: 0.17 },
+          { x1f: 0.40, y1f: 0.23, x2f: 0.18, y2f: 0.26 },
+          { x1f: 0.38, y1f: 0.30, x2f: 0.62, y2f: 0.33 },
+          { x1f: 0.40, y1f: 0.39, x2f: 0.18, y2f: 0.42 },
+          { x1f: 0.38, y1f: 0.46, x2f: 0.62, y2f: 0.49 },
+          { x1f: 0.40, y1f: 0.55, x2f: 0.18, y2f: 0.58 },
+          { x1f: 0.38, y1f: 0.62, x2f: 0.62, y2f: 0.65 },
+          { x1f: 0.25, y1f: 0.82, x2f: 0.75, y2f: 0.82 },
+        ],
+        bumpers: [
+          { xf: 0.50, yf: 0.12, r: 14 },
+          { xf: 0.50, yf: 0.28, r: 14 },
+          { xf: 0.50, yf: 0.44, r: 14 },
+          { xf: 0.50, yf: 0.60, r: 14 },
+          { xf: 0.10, yf: 0.20, r: 10 },
+          { xf: 0.90, yf: 0.36, r: 10 },
+          { xf: 0.10, yf: 0.52, r: 10 },
+          { xf: 0.90, yf: 0.68, r: 10 },
+        ],
+        drops: [
+          { xf: 0.25, delay: 0 },
+          { xf: 0.30, delay: 800 },
+          { xf: 0.20, delay: 1600 },
+          { xf: 0.35, delay: 2400 },
+          { xf: 0.25, delay: 3200 },
+          { xf: 0.30, delay: 4000 },
+          { xf: 0.20, delay: 4800 },
+          { xf: 0.35, delay: 5600 },
+          { xf: 0.25, delay: 7200 },
+          { xf: 0.30, delay: 8000 },
+          { xf: 0.20, delay: 8800 },
+          { xf: 0.35, delay: 9600 },
+          { xf: 0.25, delay: 10400 },
+          { xf: 0.30, delay: 11200 },
+          { xf: 0.20, delay: 12000 },
+          { xf: 0.35, delay: 12800 },
+        ],
+        melody: [
+          { note: 'D5', delay: 200 },
+          { note: 'F#5', delay: 1000 },
+          { note: 'A5', delay: 1800 },
+          { note: 'B5', delay: 2600 },
+          { note: 'G5', delay: 3400 },
+          { note: 'F#5', delay: 4200 },
+          { note: 'E5', delay: 5000 },
+          { note: 'D5', delay: 5800 },
+          { note: 'D5', delay: 7400 },
+          { note: 'F#5', delay: 8200 },
+          { note: 'A5', delay: 9000 },
+          { note: 'B5', delay: 9800 },
+          { note: 'G5', delay: 10600 },
+          { note: 'F#5', delay: 11400 },
+          { note: 'E5', delay: 12200 },
+          { note: 'D5', delay: 13000 },
+        ]
+      },
+
+      ode: {
+        title: 'Ode to Joy',
+        surfaces: [
+          { x1f: 0.12, y1f: 0.10, x2f: 0.28, y2f: 0.12, note: 'E5' },
+          { x1f: 0.32, y1f: 0.10, x2f: 0.48, y2f: 0.12, note: 'E5' },
+          { x1f: 0.55, y1f: 0.17, x2f: 0.70, y2f: 0.19, note: 'F5' },
+          { x1f: 0.20, y1f: 0.24, x2f: 0.35, y2f: 0.26, note: 'G5' },
+          { x1f: 0.45, y1f: 0.24, x2f: 0.60, y2f: 0.26, note: 'G5' },
+          { x1f: 0.68, y1f: 0.31, x2f: 0.82, y2f: 0.33, note: 'F5' },
+          { x1f: 0.30, y1f: 0.38, x2f: 0.45, y2f: 0.40, note: 'E5' },
+          { x1f: 0.55, y1f: 0.45, x2f: 0.70, y2f: 0.47, note: 'D5' },
+          { x1f: 0.18, y1f: 0.52, x2f: 0.33, y2f: 0.54, note: 'C5' },
+          { x1f: 0.42, y1f: 0.52, x2f: 0.57, y2f: 0.54, note: 'C5' },
+          { x1f: 0.65, y1f: 0.59, x2f: 0.80, y2f: 0.61, note: 'D5' },
+          { x1f: 0.25, y1f: 0.66, x2f: 0.40, y2f: 0.68, note: 'E5' },
+          { x1f: 0.50, y1f: 0.73, x2f: 0.68, y2f: 0.75, note: 'E5' },
+          { x1f: 0.22, y1f: 0.80, x2f: 0.40, y2f: 0.82, note: 'D5' },
+          { x1f: 0.50, y1f: 0.80, x2f: 0.68, y2f: 0.82, note: 'D5' },
+          { x1f: 0.46, y1f: 0.12, x2f: 0.57, y2f: 0.16 },
+          { x1f: 0.68, y1f: 0.19, x2f: 0.78, y2f: 0.15 },
+          { x1f: 0.13, y1f: 0.26, x2f: 0.08, y2f: 0.22 },
+          { x1f: 0.58, y1f: 0.26, x2f: 0.70, y2f: 0.30 },
+          { x1f: 0.80, y1f: 0.33, x2f: 0.88, y2f: 0.29 },
+          { x1f: 0.20, y1f: 0.40, x2f: 0.12, y2f: 0.36 },
+          { x1f: 0.43, y1f: 0.40, x2f: 0.57, y2f: 0.44 },
+          { x1f: 0.68, y1f: 0.47, x2f: 0.78, y2f: 0.43 },
+          { x1f: 0.31, y1f: 0.54, x2f: 0.44, y2f: 0.51 },
+          { x1f: 0.78, y1f: 0.61, x2f: 0.86, y2f: 0.57 },
+          { x1f: 0.38, y1f: 0.68, x2f: 0.52, y2f: 0.72 },
+        ],
+        bumpers: [
+          { xf: 0.50, yf: 0.14, r: 10 },
+          { xf: 0.76, yf: 0.25, r: 10 },
+          { xf: 0.15, yf: 0.32, r: 10 },
+          { xf: 0.50, yf: 0.42, r: 10 },
+          { xf: 0.78, yf: 0.55, r: 10 },
+          { xf: 0.14, yf: 0.62, r: 10 },
+          { xf: 0.80, yf: 0.72, r: 10 },
+        ],
+        drops: [
+          { xf: 0.18, delay: 0 },
+          { xf: 0.38, delay: 550 },
+          { xf: 0.60, delay: 1100 },
+          { xf: 0.26, delay: 1650 },
+          { xf: 0.50, delay: 2200 },
+          { xf: 0.74, delay: 2750 },
+          { xf: 0.36, delay: 3300 },
+          { xf: 0.60, delay: 3850 },
+          { xf: 0.24, delay: 4400 },
+          { xf: 0.48, delay: 4950 },
+          { xf: 0.70, delay: 5500 },
+          { xf: 0.32, delay: 6050 },
+          { xf: 0.56, delay: 6600 },
+          { xf: 0.28, delay: 7150 },
+          { xf: 0.56, delay: 7700 },
+        ],
+        melody: [
+          { note: 'E5', delay: 200 },
+          { note: 'E5', delay: 750 },
+          { note: 'F5', delay: 1300 },
+          { note: 'G5', delay: 1850 },
+          { note: 'G5', delay: 2400 },
+          { note: 'F5', delay: 2950 },
+          { note: 'E5', delay: 3500 },
+          { note: 'D5', delay: 4050 },
+          { note: 'C5', delay: 4600 },
+          { note: 'C5', delay: 5150 },
+          { note: 'D5', delay: 5700 },
+          { note: 'E5', delay: 6250 },
+          { note: 'E5', delay: 6800 },
+          { note: 'D5', delay: 7350 },
+          { note: 'D5', delay: 7900 },
+        ]
+      },
+
+      elise: {
+        title: 'Fur Elise',
+        surfaces: [
+          { x1f: 0.15, y1f: 0.10, x2f: 0.30, y2f: 0.12, note: 'E5' },
+          { x1f: 0.40, y1f: 0.10, x2f: 0.55, y2f: 0.12, note: 'D#5' },
+          { x1f: 0.65, y1f: 0.10, x2f: 0.80, y2f: 0.12, note: 'E5' },
+          { x1f: 0.20, y1f: 0.20, x2f: 0.35, y2f: 0.22, note: 'D#5' },
+          { x1f: 0.45, y1f: 0.20, x2f: 0.60, y2f: 0.22, note: 'E5' },
+          { x1f: 0.65, y1f: 0.32, x2f: 0.80, y2f: 0.34, note: 'B4' },
+          { x1f: 0.25, y1f: 0.44, x2f: 0.40, y2f: 0.46, note: 'D5' },
+          { x1f: 0.55, y1f: 0.56, x2f: 0.70, y2f: 0.58, note: 'C5' },
+          { x1f: 0.25, y1f: 0.70, x2f: 0.50, y2f: 0.72, note: 'A4' },
+          { x1f: 0.28, y1f: 0.12, x2f: 0.42, y2f: 0.09 },
+          { x1f: 0.53, y1f: 0.12, x2f: 0.67, y2f: 0.09 },
+          { x1f: 0.78, y1f: 0.12, x2f: 0.88, y2f: 0.08 },
+          { x1f: 0.10, y1f: 0.22, x2f: 0.05, y2f: 0.18 },
+          { x1f: 0.33, y1f: 0.22, x2f: 0.47, y2f: 0.19 },
+          { x1f: 0.58, y1f: 0.22, x2f: 0.67, y2f: 0.28 },
+          { x1f: 0.78, y1f: 0.34, x2f: 0.86, y2f: 0.30 },
+          { x1f: 0.50, yf: 0.36, x2f: 0.58, y2f: 0.32 },
+          { x1f: 0.18, y1f: 0.36, x2f: 0.27, y2f: 0.40 },
+          { x1f: 0.38, y1f: 0.46, x2f: 0.57, y2f: 0.52 },
+          { x1f: 0.68, y1f: 0.58, x2f: 0.78, y2f: 0.54 },
+          { x1f: 0.18, y1f: 0.62, x2f: 0.27, y2f: 0.66 },
+          { x1f: 0.20, y1f: 0.84, x2f: 0.80, y2f: 0.84 },
+        ],
+        bumpers: [
+          { xf: 0.35, yf: 0.15, r: 10 },
+          { xf: 0.60, yf: 0.15, r: 10 },
+          { xf: 0.85, yf: 0.16, r: 10 },
+          { xf: 0.15, yf: 0.28, r: 12 },
+          { xf: 0.50, yf: 0.38, r: 11 },
+          { xf: 0.75, yf: 0.48, r: 10 },
+          { xf: 0.40, yf: 0.62, r: 10 },
+        ],
+        drops: [
+          { xf: 0.20, delay: 0 },
+          { xf: 0.46, delay: 400 },
+          { xf: 0.72, delay: 800 },
+          { xf: 0.26, delay: 1200 },
+          { xf: 0.50, delay: 1600 },
+          { xf: 0.72, delay: 2200 },
+          { xf: 0.30, delay: 3000 },
+          { xf: 0.60, delay: 3800 },
+          { xf: 0.35, delay: 4600 },
+        ],
+        melody: [
+          { note: 'E5', delay: 200 },
+          { note: 'D#5', delay: 600 },
+          { note: 'E5', delay: 1000 },
+          { note: 'D#5', delay: 1400 },
+          { note: 'E5', delay: 1800 },
+          { note: 'B4', delay: 2400 },
+          { note: 'D5', delay: 3200 },
+          { note: 'C5', delay: 4000 },
+          { note: 'A4', delay: 4800 },
+        ]
+      },
+
+      arohanam: {
+        title: 'Sa Re Ga Ma Pa Da Ni Sa — Arohanam',
+        // Classic ascending scale: Sa Re Ga Ma Pa Da Ni Sa (upper)
+        // Then descending: Sa Ni Da Pa Ma Ga Re Sa
+        surfaces: [
+          // Ascending staircase — left to right, each step lower on screen
+          { x1f: 0.08, y1f: 0.08, x2f: 0.18, y2f: 0.10, note: 'Sa5' },
+          { x1f: 0.22, y1f: 0.16, x2f: 0.32, y2f: 0.18, note: 'Re5' },
+          { x1f: 0.36, y1f: 0.24, x2f: 0.46, y2f: 0.26, note: 'Ga5' },
+          { x1f: 0.50, y1f: 0.32, x2f: 0.60, y2f: 0.34, note: 'Ma5' },
+          { x1f: 0.64, y1f: 0.40, x2f: 0.74, y2f: 0.42, note: 'Pa5' },
+          { x1f: 0.78, y1f: 0.48, x2f: 0.88, y2f: 0.50, note: 'Da5' },
+          { x1f: 0.64, y1f: 0.56, x2f: 0.74, y2f: 0.58, note: 'Ni5' },
+          { x1f: 0.42, y1f: 0.64, x2f: 0.56, y2f: 0.66, note: 'Sa6' },
+          // Descending return
+          { x1f: 0.26, y1f: 0.72, x2f: 0.38, y2f: 0.74, note: 'Ni5' },
+          { x1f: 0.50, y1f: 0.78, x2f: 0.62, y2f: 0.80, note: 'Da5' },
+          { x1f: 0.68, y1f: 0.84, x2f: 0.80, y2f: 0.86, note: 'Pa5' },
+          { x1f: 0.30, y1f: 0.88, x2f: 0.46, y2f: 0.90, note: 'Sa5' },
+          // Guide ramps
+          { x1f: 0.16, y1f: 0.10, x2f: 0.24, y2f: 0.14 },
+          { x1f: 0.30, y1f: 0.18, x2f: 0.38, y2f: 0.22 },
+          { x1f: 0.44, y1f: 0.26, x2f: 0.52, y2f: 0.30 },
+          { x1f: 0.58, y1f: 0.34, x2f: 0.66, y2f: 0.38 },
+          { x1f: 0.72, y1f: 0.42, x2f: 0.80, y2f: 0.46 },
+          { x1f: 0.86, y1f: 0.50, x2f: 0.78, y2f: 0.54 },
+          { x1f: 0.72, y1f: 0.58, x2f: 0.56, y2f: 0.62 },
+          { x1f: 0.40, y1f: 0.66, x2f: 0.30, y2f: 0.70 },
+          { x1f: 0.36, y1f: 0.74, x2f: 0.52, y2f: 0.77 },
+          { x1f: 0.60, y1f: 0.80, x2f: 0.70, y2f: 0.83 },
+        ],
+        bumpers: [
+          { xf: 0.20, yf: 0.13, r: 10 },
+          { xf: 0.34, yf: 0.21, r: 10 },
+          { xf: 0.48, yf: 0.29, r: 10 },
+          { xf: 0.62, yf: 0.37, r: 10 },
+          { xf: 0.76, yf: 0.45, r: 10 },
+          { xf: 0.82, yf: 0.53, r: 10 },
+          { xf: 0.58, yf: 0.61, r: 10 },
+          { xf: 0.34, yf: 0.69, r: 10 },
+        ],
+        drops: [
+          { xf: 0.12, delay: 0 },
+          { xf: 0.26, delay: 700 },
+          { xf: 0.40, delay: 1400 },
+          { xf: 0.54, delay: 2100 },
+          { xf: 0.68, delay: 2800 },
+          { xf: 0.82, delay: 3500 },
+          { xf: 0.68, delay: 4200 },
+          { xf: 0.48, delay: 4900 },
+          // Descending
+          { xf: 0.32, delay: 5600 },
+          { xf: 0.54, delay: 6300 },
+          { xf: 0.72, delay: 7000 },
+          { xf: 0.36, delay: 7700 },
+        ],
+        melody: [
+          { note: 'Sa5', delay: 200 },
+          { note: 'Re5', delay: 900 },
+          { note: 'Ga5', delay: 1600 },
+          { note: 'Ma5', delay: 2300 },
+          { note: 'Pa5', delay: 3000 },
+          { note: 'Da5', delay: 3700 },
+          { note: 'Ni5', delay: 4400 },
+          { note: 'Sa6', delay: 5100 },
+          // Avarohanam (descending)
+          { note: 'Ni5', delay: 5800 },
+          { note: 'Da5', delay: 6500 },
+          { note: 'Pa5', delay: 7200 },
+          { note: 'Sa5', delay: 7900 },
+        ]
+      },
+
+      bhairavi: {
+        title: 'Raga Bhairavi — Morning Raga',
+        // Bhairavi uses komal Re, Ga, Da, Ni: Sa Re♭ Ga♭ Ma Pa Da♭ Ni♭ Sa
+        // Famous phrase: Sa Re♭ Ga♭ Ma Pa, Pa Da♭ Ni♭ Sa(upper), Sa Ni♭ Da♭ Pa, Ma Ga♭ Re♭ Sa
+        surfaces: [
+          // Spiral/cascade layout
+          { x1f: 0.40, y1f: 0.06, x2f: 0.55, y2f: 0.08, note: 'Sa5' },
+          { x1f: 0.60, y1f: 0.14, x2f: 0.75, y2f: 0.16, note: 'Re♭5' },
+          { x1f: 0.25, y1f: 0.14, x2f: 0.38, y2f: 0.16, note: 'Ga♭5' },
+          { x1f: 0.55, y1f: 0.24, x2f: 0.70, y2f: 0.26, note: 'Ma5' },
+          { x1f: 0.30, y1f: 0.32, x2f: 0.48, y2f: 0.34, note: 'Pa5' },
+          // Second phrase
+          { x1f: 0.55, y1f: 0.32, x2f: 0.70, y2f: 0.34, note: 'Pa5' },
+          { x1f: 0.35, y1f: 0.42, x2f: 0.50, y2f: 0.44, note: 'Da♭5' },
+          { x1f: 0.58, y1f: 0.50, x2f: 0.73, y2f: 0.52, note: 'Ni♭5' },
+          { x1f: 0.35, y1f: 0.58, x2f: 0.52, y2f: 0.60, note: 'Sa6' },
+          // Descending
+          { x1f: 0.58, y1f: 0.66, x2f: 0.73, y2f: 0.68, note: 'Ni♭5' },
+          { x1f: 0.28, y1f: 0.72, x2f: 0.43, y2f: 0.74, note: 'Da♭5' },
+          { x1f: 0.55, y1f: 0.78, x2f: 0.70, y2f: 0.80, note: 'Pa5' },
+          { x1f: 0.30, y1f: 0.84, x2f: 0.48, y2f: 0.86, note: 'Ma5' },
+          { x1f: 0.55, y1f: 0.90, x2f: 0.70, y2f: 0.92, note: 'Ga♭5' },
+          { x1f: 0.28, y1f: 0.94, x2f: 0.45, y2f: 0.96, note: 'Sa5' },
+          // Guide ramps
+          { x1f: 0.53, y1f: 0.08, x2f: 0.62, y2f: 0.12 },
+          { x1f: 0.73, y1f: 0.16, x2f: 0.80, y2f: 0.12 },
+          { x1f: 0.20, y1f: 0.16, x2f: 0.12, y2f: 0.12 },
+          { x1f: 0.36, y1f: 0.16, x2f: 0.40, y2f: 0.22 },
+          { x1f: 0.68, y1f: 0.26, x2f: 0.75, y2f: 0.22 },
+          { x1f: 0.46, y1f: 0.34, x2f: 0.38, y2f: 0.40 },
+          { x1f: 0.68, y1f: 0.34, x2f: 0.72, y2f: 0.30 },
+          { x1f: 0.48, y1f: 0.44, x2f: 0.60, y2f: 0.48 },
+          { x1f: 0.71, y1f: 0.52, x2f: 0.78, y2f: 0.48 },
+          { x1f: 0.50, y1f: 0.60, x2f: 0.60, y2f: 0.64 },
+          { x1f: 0.71, y1f: 0.68, x2f: 0.78, y2f: 0.64 },
+          { x1f: 0.41, y1f: 0.74, x2f: 0.57, y2f: 0.77 },
+        ],
+        bumpers: [
+          { xf: 0.50, yf: 0.11, r: 12 },
+          { xf: 0.45, yf: 0.20, r: 10 },
+          { xf: 0.52, yf: 0.38, r: 10 },
+          { xf: 0.45, yf: 0.47, r: 10 },
+          { xf: 0.50, yf: 0.55, r: 10 },
+          { xf: 0.50, yf: 0.71, r: 10 },
+          { xf: 0.50, yf: 0.83, r: 10 },
+        ],
+        drops: [
+          { xf: 0.46, delay: 0 },
+          { xf: 0.66, delay: 600 },
+          { xf: 0.30, delay: 1200 },
+          { xf: 0.62, delay: 1800 },
+          { xf: 0.38, delay: 2400 },
+          { xf: 0.62, delay: 3000 },
+          { xf: 0.40, delay: 3600 },
+          { xf: 0.64, delay: 4200 },
+          { xf: 0.40, delay: 4800 },
+          { xf: 0.64, delay: 5400 },
+          { xf: 0.34, delay: 6000 },
+          { xf: 0.60, delay: 6600 },
+          { xf: 0.36, delay: 7200 },
+          { xf: 0.60, delay: 7800 },
+          { xf: 0.34, delay: 8400 },
+        ],
+        melody: [
+          { note: 'Sa5', delay: 200 },
+          { note: 'Re♭5', delay: 800 },
+          { note: 'Ga♭5', delay: 1400 },
+          { note: 'Ma5', delay: 2000 },
+          { note: 'Pa5', delay: 2600 },
+          { note: 'Pa5', delay: 3200 },
+          { note: 'Da♭5', delay: 3800 },
+          { note: 'Ni♭5', delay: 4400 },
+          { note: 'Sa6', delay: 5000 },
+          // Descending
+          { note: 'Ni♭5', delay: 5600 },
+          { note: 'Da♭5', delay: 6200 },
+          { note: 'Pa5', delay: 6800 },
+          { note: 'Ma5', delay: 7400 },
+          { note: 'Ga♭5', delay: 8000 },
+          { note: 'Sa5', delay: 8600 },
+        ]
+      },
+
+      yaman: {
+        title: 'Raga Yaman — Evening Raga',
+        // Yaman: Sa Re Ga Ma♯ Pa Da Ni Sa (tivra Ma = F#)
+        // Famous phrase: Ni Re Ga, Ma♯ Ga Re Sa, Pa Ma♯ Ga Re, Sa Ni Da Pa
+        surfaces: [
+          // Elegant flowing layout
+          { x1f: 0.10, y1f: 0.08, x2f: 0.25, y2f: 0.10, note: 'Ni4' },
+          { x1f: 0.35, y1f: 0.08, x2f: 0.50, y2f: 0.10, note: 'Re5' },
+          { x1f: 0.60, y1f: 0.08, x2f: 0.75, y2f: 0.10, note: 'Ga5' },
+          // Second line
+          { x1f: 0.20, y1f: 0.18, x2f: 0.38, y2f: 0.20, note: 'Ma♯5' },
+          { x1f: 0.48, y1f: 0.18, x2f: 0.63, y2f: 0.20, note: 'Ga5' },
+          { x1f: 0.72, y1f: 0.18, x2f: 0.86, y2f: 0.20, note: 'Re5' },
+          // Third line
+          { x1f: 0.30, y1f: 0.28, x2f: 0.50, y2f: 0.30, note: 'Sa5' },
+          // Fourth line — Pa Ma♯ Ga Re
+          { x1f: 0.55, y1f: 0.38, x2f: 0.70, y2f: 0.40, note: 'Pa5' },
+          { x1f: 0.25, y1f: 0.38, x2f: 0.42, y2f: 0.40, note: 'Ma♯5' },
+          { x1f: 0.55, y1f: 0.48, x2f: 0.70, y2f: 0.50, note: 'Ga5' },
+          { x1f: 0.25, y1f: 0.48, x2f: 0.42, y2f: 0.50, note: 'Re5' },
+          // Final descent — Sa Ni Da Pa
+          { x1f: 0.48, y1f: 0.58, x2f: 0.65, y2f: 0.60, note: 'Sa5' },
+          { x1f: 0.25, y1f: 0.66, x2f: 0.42, y2f: 0.68, note: 'Ni4' },
+          { x1f: 0.55, y1f: 0.74, x2f: 0.72, y2f: 0.76, note: 'Da4' },
+          { x1f: 0.30, y1f: 0.82, x2f: 0.52, y2f: 0.84, note: 'Pa4' },
+          // Guide ramps
+          { x1f: 0.23, y1f: 0.10, x2f: 0.37, y2f: 0.07 },
+          { x1f: 0.48, y1f: 0.10, x2f: 0.62, y2f: 0.07 },
+          { x1f: 0.73, y1f: 0.10, x2f: 0.82, y2f: 0.06 },
+          { x1f: 0.12, y1f: 0.14, x2f: 0.22, y2f: 0.16 },
+          { x1f: 0.36, y1f: 0.20, x2f: 0.50, y2f: 0.17 },
+          { x1f: 0.61, y1f: 0.20, x2f: 0.74, y2f: 0.17 },
+          { x1f: 0.84, y1f: 0.20, x2f: 0.90, y2f: 0.16 },
+          { x1f: 0.20, y1f: 0.22, x2f: 0.32, y2f: 0.26 },
+          { x1f: 0.48, y1f: 0.30, x2f: 0.57, y2f: 0.36 },
+          { x1f: 0.68, y1f: 0.40, x2f: 0.76, y2f: 0.36 },
+          { x1f: 0.18, y1f: 0.40, x2f: 0.12, y2f: 0.36 },
+          { x1f: 0.40, y1f: 0.40, x2f: 0.46, y2f: 0.46 },
+          { x1f: 0.68, y1f: 0.50, x2f: 0.76, y2f: 0.46 },
+          { x1f: 0.18, y1f: 0.52, x2f: 0.30, y2f: 0.56 },
+          { x1f: 0.63, y1f: 0.60, x2f: 0.72, y2f: 0.56 },
+          { x1f: 0.40, y1f: 0.68, x2f: 0.57, y2f: 0.72 },
+          { x1f: 0.70, y1f: 0.76, x2f: 0.78, y2f: 0.72 },
+          { x1f: 0.50, y1f: 0.84, x2f: 0.60, y2f: 0.80 },
+        ],
+        bumpers: [
+          { xf: 0.30, yf: 0.07, r: 10 },
+          { xf: 0.55, yf: 0.07, r: 10 },
+          { xf: 0.80, yf: 0.12, r: 10 },
+          { xf: 0.45, yf: 0.24, r: 12 },
+          { xf: 0.50, yf: 0.34, r: 10 },
+          { xf: 0.50, yf: 0.44, r: 10 },
+          { xf: 0.50, yf: 0.54, r: 10 },
+          { xf: 0.35, yf: 0.62, r: 10 },
+          { xf: 0.65, yf: 0.70, r: 10 },
+          { xf: 0.42, yf: 0.78, r: 10 },
+        ],
+        drops: [
+          // Ni Re Ga phrase
+          { xf: 0.16, delay: 0 },
+          { xf: 0.42, delay: 600 },
+          { xf: 0.66, delay: 1200 },
+          // Ma♯ Ga Re Sa
+          { xf: 0.28, delay: 1800 },
+          { xf: 0.54, delay: 2400 },
+          { xf: 0.78, delay: 3000 },
+          { xf: 0.38, delay: 3600 },
+          // Pa Ma♯ Ga Re
+          { xf: 0.62, delay: 4400 },
+          { xf: 0.32, delay: 5000 },
+          { xf: 0.62, delay: 5600 },
+          { xf: 0.32, delay: 6200 },
+          // Sa Ni Da Pa
+          { xf: 0.54, delay: 6800 },
+          { xf: 0.32, delay: 7400 },
+          { xf: 0.62, delay: 8000 },
+          { xf: 0.38, delay: 8600 },
+        ],
+        melody: [
+          // Ni Re Ga — opening phrase of Yaman
+          { note: 'Ni4', delay: 200 },
+          { note: 'Re5', delay: 800 },
+          { note: 'Ga5', delay: 1400 },
+          // Ma♯ Ga Re Sa
+          { note: 'Ma♯5', delay: 2000 },
+          { note: 'Ga5', delay: 2600 },
+          { note: 'Re5', delay: 3200 },
+          { note: 'Sa5', delay: 3800 },
+          // Pa Ma♯ Ga Re
+          { note: 'Pa5', delay: 4600 },
+          { note: 'Ma♯5', delay: 5200 },
+          { note: 'Ga5', delay: 5800 },
+          { note: 'Re5', delay: 6400 },
+          // Sa Ni Da Pa
+          { note: 'Sa5', delay: 7000 },
+          { note: 'Ni4', delay: 7600 },
+          { note: 'Da4', delay: 8200 },
+          { note: 'Pa4', delay: 8800 },
+        ]
+      },
+
+      sandbox: {
+        title: 'Sandbox',
+        surfaces: [],
+        bumpers: [],
+        drops: [],
+        melody: []
+      }
+    };
+  }
+
+  /* ============================================================
+     LOAD PRESET
+  ============================================================ */
+  function loadPreset(name) {
+    stopAutoDropper();
+    const presets = makePresets();
+    const p = presets[name];
+    if (!p) return;
+
+    currentPreset = name;
+    balls = [];
+    surfaces = [];
+    bumpers = [];
+    particles = [];
+    floatingNotes = [];
+    ripples = [];
+
+    // Reset gravity and speed ramp
+    gravity = BASE_GRAVITY;
+    speedRampActive = false;
+    presetStartTime = 0;
+
+    // Reset combo
+    comboCount = 0;
+    lastHitTime = 0;
+    comboEl.style.opacity = '0';
+
+    // Reset shake
+    shakeX = 0; shakeY = 0; shakeDecay = 0;
+
+    ctx.fillStyle = '#0a0a0f';
+    ctx.fillRect(0, 0, W, H);
+
+    for (const s of p.surfaces) {
+      surfaces.push({
+        x1: s.x1f * W, y1: s.y1f * H,
+        x2: s.x2f * W, y2: (s.y2f !== undefined ? s.y2f : s.yf) * H,
+        note: s.note || null,
+        flashTimer: 0,
+        hue: s.note ? noteToHue(s.note) : 190,
+        waveOffset: 0,
+        waveTimer: 0
+      });
+    }
+    for (const b of p.bumpers) {
+      bumpers.push({
+        x: b.xf * W, y: b.yf * H,
+        r: b.r || 12,
+        note: b.note || null,
+        hue: b.note ? noteToHue(b.note) : 50,
+        flashTimer: 0,
+        pulseTimer: 0,
+        baseR: b.r || 12
+      });
+    }
+
+    showTitle(p.title);
+
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.preset === name);
+    });
+
+    if (name !== 'sandbox' && p.drops.length > 0) {
+      setTimeout(() => {
+        if (currentPreset === name) {
+          startAutoDropper(p);
+        }
+      }, 1000);
+    }
+  }
+
+  /* ============================================================
+     TITLE DISPLAY
+  ============================================================ */
+  const titleEl = document.getElementById('song-title');
+  let titleTimeout = null;
+
+  function showTitle(text) {
+    if (titleTimeout) clearTimeout(titleTimeout);
+    titleEl.textContent = text;
+    titleEl.classList.add('visible');
+    titleTimeout = setTimeout(() => {
+      titleEl.classList.remove('visible');
+    }, 2500);
+  }
+
+  /* ============================================================
+     AUTO-DROPPER
+  ============================================================ */
+  function startAutoDropper(preset) {
+    stopAutoDropper();
+    initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    isPlaying = true;
+    speedRampActive = true;
+    presetStartTime = Date.now();
+    updatePlayButton();
+
+    const drops = preset.drops;
+    const melody = preset.melody || [];
+
+    for (const d of drops) {
+      const t = setTimeout(() => {
+        if (isPlaying) {
+          createBall(d.xf * W, 5, (Math.random() - 0.5) * 0.5, 1);
+        }
+      }, d.delay);
+      dropTimeouts.push(t);
+    }
+
+    for (const m of melody) {
+      const t = setTimeout(() => {
+        if (isPlaying) {
+          playNoteFreq(noteFreq(m.note), 0.22);
+          registerHit();
+          // Spawn floating note at a matching surface
+          let noteX = W * 0.5, noteY = H * 0.3;
+          const hue = noteToHue(m.note);
+          for (const s of surfaces) {
+            if (s.note === m.note && s.flashTimer <= 0) {
+              s.flashTimer = 15;
+              s.waveTimer = 8;
+              s.waveOffset = 3;
+              noteX = (s.x1 + s.x2) / 2;
+              noteY = (s.y1 + s.y2) / 2;
+              break;
+            }
+          }
+          spawnFloatingNote(noteX, noteY, hue, m.note);
+          spawnRipple(noteX, noteY, hue);
+        }
+      }, m.delay);
+      dropTimeouts.push(t);
+    }
+  }
+
+  function stopAutoDropper() {
+    isPlaying = false;
+    speedRampActive = false;
+    gravity = BASE_GRAVITY;
+    for (const t of dropTimeouts) clearTimeout(t);
+    dropTimeouts = [];
+    updatePlayButton();
+  }
+
+  function togglePlay() {
+    initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    if (isPlaying) {
+      stopAutoDropper();
+    } else {
+      const presets = makePresets();
+      const p = presets[currentPreset];
+      if (p && p.drops.length > 0) {
+        startAutoDropper(p);
+      }
+    }
+  }
+
+  function updatePlayButton() {
+    const btn = document.getElementById('btn-play');
+    if (isPlaying) {
+      btn.innerHTML = '&#9646;&#9646;';
+      btn.classList.add('playing');
+    } else {
+      btn.innerHTML = '&#9654;';
+      btn.classList.remove('playing');
+    }
+  }
+
+  /* ============================================================
+     COLLISION HANDLER HELPER
+     Centralizes post-collision effects: particles, notes, ripples, combo, shake, squash
+  ============================================================ */
+  function handleCollisionEffects(ball, cx, cy, hue, imp, noteName, nx, ny) {
+    // Register combo hit
+    registerHit();
+
+    // Floating note
+    spawnFloatingNote(cx, cy, hue, noteName || noteNameAtY(cy));
+
+    // Ripple
+    spawnRipple(cx, cy, hue);
+
+    // Squash/stretch the ball
+    if (ball) {
+      const speed = Math.hypot(ball.vx, ball.vy);
+      if (speed > 1) {
+        // squash perpendicular to velocity, stretch along it
+        const stretchAmt = Math.min(1.4, 1 + imp * 0.05);
+        const squashAmt = Math.max(0.7, 1 - imp * 0.04);
+        // Determine squash axis based on collision normal
+        const absNx = Math.abs(nx || 0);
+        const absNy = Math.abs(ny || 1);
+        if (absNy > absNx) {
+          ball.squashX = stretchAmt;
+          ball.squashY = squashAmt;
+        } else {
+          ball.squashX = squashAmt;
+          ball.squashY = stretchAmt;
+        }
+        ball.squashTimer = 7;
+      }
+    }
+
+    // Screen shake on big hits
+    if (imp > 8) {
+      triggerShake(imp);
+    }
+
+    // Starburst on big collisions
+    if (imp > 5) {
+      const extraCount = comboCount >= 5 ? 16 : 10;
+      spawnParticles(cx, cy, hue, extraCount, true);
+    }
+
+    // Extra flair at high combo
+    if (comboCount >= 5) {
+      spawnParticles(cx, cy, hue, 4);
+    }
+  }
+
+  /* ============================================================
+     PHYSICS UPDATE
+  ============================================================ */
   function update() {
-    // Update balls
+    // Speed ramp: after 5 seconds, gradually increase gravity
+    if (speedRampActive && presetStartTime > 0) {
+      const elapsed = (Date.now() - presetStartTime) / 1000;
+      if (elapsed > 5 && elapsed < 15) {
+        const rampT = (elapsed - 5) / 10; // 0 to 1 over 10 seconds
+        gravity = BASE_GRAVITY + rampT * 0.08; // 0.3 -> 0.38
+      } else if (elapsed >= 15) {
+        gravity = 0.38;
+      }
+    }
+
+    // Check combo timeout
+    checkComboTimeout();
+
+    // Update screen shake
+    if (shakeDecay > 0) {
+      shakeDecay--;
+      const factor = shakeDecay / 10;
+      shakeX *= 0.8;
+      shakeY *= 0.8;
+      if (shakeDecay <= 0) {
+        shakeX = 0;
+        shakeY = 0;
+      }
+    }
+
     for (let i = balls.length - 1; i >= 0; i--) {
       const b = balls[i];
 
-      // Gravity
-      b.vy += GRAVITY;
+      // Ball aging
+      b.age++;
 
-      // Friction
+      // Track trail positions
+      const speed = Math.hypot(b.vx, b.vy);
+      if (speed > 3) {
+        b.trail.push({x: b.x, y: b.y});
+        if (b.trail.length > 8) b.trail.shift();
+      } else if (b.trail.length > 0) {
+        b.trail.shift(); // fade trail when slow
+      }
+
+      // Slow detection
+      if (speed < 0.3) {
+        b.slowFrames++;
+      } else {
+        b.slowFrames = 0;
+      }
+
+      // Ball aging: fade after 600 frames, remove after 900
+      if (b.age > 600) {
+        b.life = Math.max(0, 1 - (b.age - 600) / 300);
+      }
+      // Faster removal for nearly stopped balls
+      if (b.slowFrames > 180) {
+        b.life -= 0.03;
+      }
+
+      // Remove dead balls with pop burst
+      if (b.life <= 0 || b.age > 900) {
+        spawnPopBurst(b.x, b.y, b.hue);
+        balls.splice(i, 1);
+        continue;
+      }
+
+      // Squash recovery
+      if (b.squashTimer > 0) {
+        b.squashTimer--;
+        if (b.squashTimer <= 0) {
+          b.squashX = 1;
+          b.squashY = 1;
+        } else {
+          // Ease back toward 1
+          b.squashX += (1 - b.squashX) * 0.2;
+          b.squashY += (1 - b.squashY) * 0.2;
+        }
+      }
+
+      b.vy += gravity;
       b.vx *= FRICTION;
       b.vy *= FRICTION;
-
-      // Move
       b.x += b.vx;
       b.y += b.vy;
 
-      // Velocity-based hue: slow=blue(220), fast=red/orange(0-30)
-      const speed = Math.hypot(b.vx, b.vy);
-      const t = Math.min(1, speed / 15);
-      b.hue = 220 - t * 200; // 220 (blue) -> 20 (orange)
+      // Velocity-based hue
+      const spd = Math.hypot(b.vx, b.vy);
+      const t = Math.min(1, spd / 15);
+      b.hue = 220 - t * 200;
       if (b.hue < 0) b.hue += 360;
 
       // Wall collisions
       if (b.x - b.r < 0) {
-        b.x = b.r;
-        b.vx = Math.abs(b.vx) * BOUNCE;
+        b.x = b.r; b.vx = Math.abs(b.vx) * BOUNCE;
         const imp = Math.abs(b.vx);
         if (imp > 1.5) {
-          playNote(speed * speed, imp);
+          playNoteAtY(b.y, imp);
           spawnParticles(b.x, b.y, b.hue, 3);
+          handleCollisionEffects(b, b.x, b.y, b.hue, imp, null, -1, 0);
         }
       }
       if (b.x + b.r > W) {
-        b.x = W - b.r;
-        b.vx = -Math.abs(b.vx) * BOUNCE;
+        b.x = W - b.r; b.vx = -Math.abs(b.vx) * BOUNCE;
         const imp = Math.abs(b.vx);
         if (imp > 1.5) {
-          playNote(speed * speed, imp);
+          playNoteAtY(b.y, imp);
           spawnParticles(b.x, b.y, b.hue, 3);
+          handleCollisionEffects(b, b.x, b.y, b.hue, imp, null, 1, 0);
         }
       }
       if (b.y - b.r < 0) {
-        b.y = b.r;
-        b.vy = Math.abs(b.vy) * BOUNCE;
+        b.y = b.r; b.vy = Math.abs(b.vy) * BOUNCE;
       }
       if (b.y + b.r > H) {
-        b.y = H - b.r;
-        b.vy = -Math.abs(b.vy) * BOUNCE;
+        b.y = H - b.r; b.vy = -Math.abs(b.vy) * BOUNCE;
         const imp = Math.abs(b.vy);
         if (imp > 1.5) {
-          playNote(speed * speed, imp);
+          playNoteAtY(b.y, imp);
           spawnParticles(b.x, b.y, b.hue, 3);
+          handleCollisionEffects(b, b.x, b.y, b.hue, imp, null, 0, 1);
         }
       }
 
-      // Surface collisions
+      // Surface collisions (use original positions for physics, waveOffset is visual only)
       for (const s of surfaces) {
-        const { dist, nx, ny } = pointToSegmentDist(b.x, b.y, s.x1, s.y1, s.x2, s.y2);
+        const { dist, nx, ny, cx, cy } = pointToSegmentDist(b.x, b.y, s.x1, s.y1, s.x2, s.y2);
         if (dist < b.r) {
-          // Push out
           const overlap = b.r - dist;
           b.x += nx * overlap;
           b.y += ny * overlap;
-
-          // Reflect velocity
           const dot = b.vx * nx + b.vy * ny;
           if (dot < 0) {
             b.vx -= (1 + BOUNCE) * dot * nx;
             b.vy -= (1 + BOUNCE) * dot * ny;
             const imp = Math.abs(dot);
-            if (imp > 1) {
-              playNote(speed * speed, imp);
-              spawnParticles(b.x - nx * b.r, b.y - ny * b.r, b.hue, 4);
+            if (imp > 0.8) {
+              if (s.note) {
+                playNoteFreq(noteFreq(s.note), Math.min(0.25, imp / 15));
+                s.flashTimer = 12;
+                s.waveTimer = 8;
+                s.waveOffset = 3;
+                handleCollisionEffects(b, cx, cy, s.hue, imp, s.note, nx, ny);
+              } else {
+                playNoteAtY((s.y1 + s.y2) / 2, imp);
+                handleCollisionEffects(b, cx, cy, b.hue, imp, null, nx, ny);
+              }
+              spawnParticles(b.x - nx * b.r, b.y - ny * b.r, s.hue || b.hue, 5);
             }
           }
         }
       }
 
-      // Remove balls that are nearly stopped at the bottom for a long time
-      // (optional cleanup — skip for now, they just pile up which is fun)
+      // Bumper collisions
+      for (const bmp of bumpers) {
+        const dx = b.x - bmp.x;
+        const dy = b.y - bmp.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = b.r + bmp.r;
+        if (dist < minDist && dist > 0) {
+          const nx = dx / dist, ny = dy / dist;
+          const overlap = minDist - dist;
+          b.x += nx * overlap;
+          b.y += ny * overlap;
+          const dot = b.vx * nx + b.vy * ny;
+          if (dot < 0) {
+            b.vx -= (1 + BUMPER_BOUNCE) * dot * nx;
+            b.vy -= (1 + BUMPER_BOUNCE) * dot * ny;
+            const imp = Math.abs(dot);
+            if (imp > 0.5) {
+              if (bmp.note) {
+                playNoteFreq(noteFreq(bmp.note), Math.min(0.25, imp / 12));
+              } else {
+                playNoteAtY(bmp.y, imp);
+              }
+              bmp.flashTimer = 12;
+              bmp.pulseTimer = 10;
+              spawnParticles(bmp.x + nx * bmp.r, bmp.y + ny * bmp.r, bmp.hue, 6);
+              handleCollisionEffects(b, bmp.x + nx * bmp.r, bmp.y + ny * bmp.r, bmp.hue, imp, bmp.note || null, nx, ny);
+            }
+          }
+        }
+      }
+
+      // Remove balls that fell way off-screen
+      if (b.y > H + 100) {
+        spawnPopBurst(b.x, b.y > H ? H : b.y, b.hue);
+        balls.splice(i, 1);
+      }
     }
 
     // Ball-to-ball collisions
@@ -331,21 +1522,15 @@
         const dist = Math.hypot(dx, dy);
         const minDist = a.r + b.r;
         if (dist < minDist && dist > 0) {
-          // Normal
           const nx = dx / dist, ny = dy / dist;
-
-          // Separate
           const overlap = (minDist - dist) / 2;
           a.x -= nx * overlap;
           a.y -= ny * overlap;
           b.x += nx * overlap;
           b.y += ny * overlap;
 
-          // Elastic collision (mass proportional to radius^2)
-          const massA = a.r * a.r;
-          const massB = b.r * b.r;
+          const massA = a.r * a.r, massB = b.r * b.r;
           const totalMass = massA + massB;
-
           const dvx = a.vx - b.vx, dvy = a.vy - b.vy;
           const dvDotN = dvx * nx + dvy * ny;
 
@@ -359,45 +1544,157 @@
             const imp = Math.abs(dvDotN);
             if (imp > 1) {
               const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
-              const avgHue = (a.hue + b.hue) / 2;
-              playNote(imp * imp, imp);
-              spawnParticles(cx, cy, avgHue, 5);
+              playNoteAtY(cy, imp);
+              spawnParticles(cx, cy, (a.hue + b.hue) / 2, 5);
+              handleCollisionEffects(null, cx, cy, (a.hue + b.hue) / 2, imp, null, nx, ny);
+              // Squash both balls
+              a.squashTimer = 6; a.squashX = 0.8; a.squashY = 1.2;
+              b.squashTimer = 6; b.squashX = 0.8; b.squashY = 1.2;
             }
           }
         }
       }
     }
 
-    // Update particles
+    // Update particles (with micro-trail)
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
+      // Update micro-trail
+      if (p.trail) {
+        p.trail.push({x: p.x, y: p.y});
+        if (p.trail.length > 3) p.trail.shift();
+      }
       p.x += p.vx;
       p.y += p.vy;
-      p.vy += 0.05; // tiny gravity on sparks
+      p.vy += 0.05;
       p.life -= p.decay;
-      if (p.life <= 0) {
-        particles.splice(i, 1);
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    // Update floating notes
+    for (let i = floatingNotes.length - 1; i >= 0; i--) {
+      const fn = floatingNotes[i];
+      fn.x += fn.vx;
+      fn.y += fn.vy;
+      fn.life -= fn.decay;
+      if (fn.life <= 0) floatingNotes.splice(i, 1);
+    }
+
+    // Update ripples
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      const r = ripples[i];
+      const expandRate = (r.maxRadius - 5) / (0.5 / 0.012); // expand over life
+      r.radius += expandRate * 0.012;
+      r.life -= 0.012;
+      if (r.life <= 0 || r.radius > r.maxRadius) ripples.splice(i, 1);
+    }
+
+    // Decay flash timers and surface wave
+    for (const s of surfaces) {
+      if (s.flashTimer > 0) s.flashTimer--;
+      if (s.waveTimer > 0) {
+        s.waveTimer--;
+        s.waveOffset *= 0.75; // decay wave displacement
+        if (s.waveTimer <= 0) s.waveOffset = 0;
+      }
+    }
+    // Bumper pulse
+    for (const b of bumpers) {
+      if (b.flashTimer > 0) b.flashTimer--;
+      if (b.pulseTimer > 0) {
+        b.pulseTimer--;
+        b.r = b.baseR + (b.pulseTimer / 10) * 5; // expand then shrink
+      } else {
+        b.r = b.baseR;
       }
     }
   }
 
-  // --- Draw ---
+  /* ============================================================
+     DRAW
+  ============================================================ */
   function draw() {
-    // Trail effect: semi-transparent overlay
-    ctx.fillStyle = `rgba(10, 10, 15, ${TRAIL_ALPHA})`;
-    ctx.fillRect(0, 0, W, H);
+    ctx.save();
+
+    // Apply screen shake
+    if (shakeDecay > 0) {
+      ctx.translate(shakeX, shakeY);
+    }
+
+    // Trail effect (clear)
+    ctx.fillStyle = 'rgba(10, 10, 15, ' + TRAIL_ALPHA + ')';
+    ctx.fillRect(-5, -5, W + 10, H + 10);
+
+    // Draw background dot grid
+    drawBackgroundGrid();
+
+    // Draw ripples
+    for (const r of ripples) {
+      const alpha = r.life * 0.8;
+      ctx.save();
+      ctx.strokeStyle = 'hsla(' + r.hue + ', 100%, 65%, ' + alpha + ')';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = 'hsla(' + r.hue + ', 100%, 65%, ' + (alpha * 0.5) + ')';
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // Draw surfaces
     ctx.lineCap = 'round';
     for (const s of surfaces) {
+      const flash = s.flashTimer > 0 ? s.flashTimer / 12 : 0;
+      const baseAlpha = 0.6 + flash * 0.4;
+      const glowSize = 10 + flash * 25;
+      const hue = s.note ? s.hue : 190;
+
+      // Calculate wave offset perpendicular to line
+      const dx = s.x2 - s.x1;
+      const dy = s.y2 - s.y1;
+      const len = Math.hypot(dx, dy);
+      let perpX = 0, perpY = 0;
+      if (len > 0 && s.waveOffset !== 0) {
+        perpX = (-dy / len) * s.waveOffset;
+        perpY = (dx / len) * s.waveOffset;
+      }
+
       ctx.save();
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = 'rgba(100, 220, 255, 0.6)';
-      ctx.strokeStyle = 'rgba(100, 220, 255, 0.7)';
-      ctx.lineWidth = 3;
+      ctx.shadowBlur = glowSize;
+      ctx.shadowColor = 'hsla(' + hue + ', 100%, 65%, ' + (0.5 + flash * 0.5) + ')';
+      ctx.strokeStyle = 'hsla(' + hue + ', 90%, ' + (60 + flash * 30) + '%, ' + baseAlpha + ')';
+      ctx.lineWidth = 3 + flash * 2;
       ctx.beginPath();
-      ctx.moveTo(s.x1, s.y1);
-      ctx.lineTo(s.x2, s.y2);
+      ctx.moveTo(s.x1 + perpX, s.y1 + perpY);
+      ctx.lineTo(s.x2 + perpX, s.y2 + perpY);
+      ctx.stroke();
+
+      if (s.note && W > 500) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'hsla(' + hue + ', 80%, 70%, ' + (0.3 + flash * 0.5) + ')';
+        ctx.font = '10px "Segoe UI", system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        const mx = (s.x1 + s.x2) / 2 + perpX, my = (s.y1 + s.y2) / 2 - 8 + perpY;
+        ctx.fillText(s.note, mx, my);
+      }
+      ctx.restore();
+    }
+
+    // Draw bumpers (with pulse)
+    for (const bmp of bumpers) {
+      const flash = bmp.flashTimer > 0 ? bmp.flashTimer / 12 : 0;
+      const glowSize = 8 + flash * 20;
+
+      ctx.save();
+      ctx.shadowBlur = glowSize;
+      ctx.shadowColor = 'hsla(' + bmp.hue + ', 100%, 60%, ' + (0.4 + flash * 0.6) + ')';
+      ctx.fillStyle = 'hsla(' + bmp.hue + ', 80%, ' + (45 + flash * 35) + '%, ' + (0.5 + flash * 0.4) + ')';
+      ctx.strokeStyle = 'hsla(' + bmp.hue + ', 90%, ' + (60 + flash * 30) + '%, ' + (0.7 + flash * 0.3) + ')';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(bmp.x, bmp.y, bmp.r, 0, Math.PI * 2);
+      ctx.fill();
       ctx.stroke();
       ctx.restore();
     }
@@ -418,49 +1715,177 @@
       ctx.restore();
     }
 
-    // Draw particles
+    // Draw particles (improved with micro-trails and streaks)
     for (const p of particles) {
       ctx.save();
       ctx.globalAlpha = p.life;
+
+      // Draw micro-trail
+      if (p.trail && p.trail.length >= 2) {
+        ctx.strokeStyle = 'hsla(' + p.hue + ', 100%, 70%, ' + (p.life * 0.3) + ')';
+        ctx.lineWidth = p.r * p.life * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(p.trail[0].x, p.trail[0].y);
+        for (let ti = 1; ti < p.trail.length; ti++) {
+          ctx.lineTo(p.trail[ti].x, p.trail[ti].y);
+        }
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }
+
       ctx.shadowBlur = 6;
-      ctx.shadowColor = `hsla(${p.hue}, 100%, 65%, ${p.life})`;
-      ctx.fillStyle = `hsla(${p.hue}, 100%, 70%, ${p.life})`;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.shadowColor = 'hsla(' + p.hue + ', 100%, 65%, ' + p.life + ')';
+      ctx.fillStyle = 'hsla(' + p.hue + ', 100%, 70%, ' + p.life + ')';
+
+      if (p.isStreak) {
+        // Draw as a tiny line/streak
+        const angle = Math.atan2(p.vy, p.vx);
+        const len = p.r * p.life * 3;
+        ctx.strokeStyle = 'hsla(' + p.hue + ', 100%, 70%, ' + p.life + ')';
+        ctx.lineWidth = p.r * p.life * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(p.x - Math.cos(angle) * len, p.y - Math.sin(angle) * len);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
-    // Draw balls
+    // Draw ball trails
+    for (const b of balls) {
+      if (b.trail.length >= 2) {
+        ctx.save();
+        const trailLen = b.trail.length;
+        for (let ti = 1; ti < trailLen; ti++) {
+          const alpha = (ti / trailLen) * 0.4 * b.life;
+          ctx.strokeStyle = 'hsla(' + b.hue + ', 90%, 60%, ' + alpha + ')';
+          ctx.lineWidth = b.r * 0.6 * (ti / trailLen);
+          ctx.beginPath();
+          ctx.moveTo(b.trail[ti - 1].x, b.trail[ti - 1].y);
+          ctx.lineTo(b.trail[ti].x, b.trail[ti].y);
+          ctx.stroke();
+        }
+        // Connect last trail point to ball
+        if (trailLen > 0) {
+          const alpha = 0.4 * b.life;
+          ctx.strokeStyle = 'hsla(' + b.hue + ', 90%, 60%, ' + alpha + ')';
+          ctx.lineWidth = b.r * 0.6;
+          ctx.beginPath();
+          ctx.moveTo(b.trail[trailLen - 1].x, b.trail[trailLen - 1].y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+
+    // Draw balls (with squash/stretch and aging opacity)
     for (const b of balls) {
       const speed = Math.hypot(b.vx, b.vy);
-      const glow = Math.min(25, 8 + speed * 2);
+      const glow = Math.min(30, 8 + speed * 2.5);
+      const ballAlpha = b.life;
+
       ctx.save();
+      ctx.globalAlpha = ballAlpha;
       ctx.shadowBlur = glow;
-      ctx.shadowColor = `hsla(${b.hue}, 100%, 60%, 0.8)`;
-      ctx.fillStyle = `hsla(${b.hue}, 90%, 60%, 0.9)`;
+      ctx.shadowColor = 'hsla(' + b.hue + ', 100%, 60%, 0.85)';
+      ctx.fillStyle = 'hsla(' + b.hue + ', 90%, 60%, 0.9)';
+
+      // Apply squash/stretch
+      ctx.translate(b.x, b.y);
+      if (b.squashTimer > 0) {
+        // Rotate to velocity direction for squash effect
+        const angle = Math.atan2(b.vy, b.vx);
+        ctx.rotate(angle);
+        ctx.scale(b.squashX, b.squashY);
+        ctx.rotate(-angle);
+      }
+
       ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.arc(0, 0, b.r, 0, Math.PI * 2);
       ctx.fill();
 
       // Inner bright core
       ctx.shadowBlur = 0;
-      ctx.fillStyle = `hsla(${b.hue}, 80%, 85%, 0.5)`;
+      ctx.fillStyle = 'hsla(' + b.hue + ', 80%, 85%, 0.5)';
       ctx.beginPath();
-      ctx.arc(b.x - b.r * 0.2, b.y - b.r * 0.2, b.r * 0.4, 0, Math.PI * 2);
+      ctx.arc(-b.r * 0.2, -b.r * 0.2, b.r * 0.35, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
+
+    // Draw floating music notes
+    for (const fn of floatingNotes) {
+      ctx.save();
+      ctx.globalAlpha = fn.life;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = 'hsla(' + fn.hue + ', 100%, 65%, ' + (fn.life * 0.6) + ')';
+      ctx.fillStyle = 'hsla(' + fn.hue + ', 90%, 75%, ' + fn.life + ')';
+      ctx.font = 'bold 22px "Segoe UI", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(fn.symbol, fn.x, fn.y);
+      // Draw note name below
+      if (fn.noteName) {
+        ctx.font = '10px "Segoe UI", system-ui, sans-serif';
+        ctx.shadowBlur = 6;
+        ctx.fillText(fn.noteName, fn.x, fn.y + 16);
+      }
+      ctx.restore();
+    }
+
+    ctx.restore(); // restore screen shake transform
   }
 
-  // --- Main loop ---
+  /* ============================================================
+     BACKGROUND DOT GRID
+  ============================================================ */
+  function drawBackgroundGrid() {
+    const spacing = 40;
+    const startX = Math.floor(0 / spacing) * spacing;
+    const startY = Math.floor(0 / spacing) * spacing;
+    const endX = W;
+    const endY = H;
+
+    for (let gx = startX; gx <= endX; gx += spacing) {
+      for (let gy = startY; gy <= endY; gy += spacing) {
+        // Check proximity to balls for pulse effect
+        let proximity = 0;
+        for (let bi = 0; bi < balls.length && bi < 30; bi++) { // cap checks for perf
+          const b = balls[bi];
+          const d = Math.hypot(b.x - gx, b.y - gy);
+          if (d < 80) {
+            proximity = Math.max(proximity, 1 - d / 80);
+          }
+        }
+
+        const baseAlpha = 0.04;
+        const pulseAlpha = baseAlpha + proximity * 0.12;
+        const radius = 1 + proximity * 1.5;
+
+        ctx.fillStyle = 'rgba(100, 200, 255, ' + pulseAlpha + ')';
+        ctx.beginPath();
+        ctx.arc(gx, gy, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  /* ============================================================
+     MAIN LOOP
+  ============================================================ */
   function loop() {
     update();
     draw();
     requestAnimationFrame(loop);
   }
 
-  // --- Input handling ---
+  /* ============================================================
+     INPUT
+  ============================================================ */
   function getPos(e) {
     if (e.touches && e.touches.length > 0) {
       return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -469,6 +1894,7 @@
   }
 
   function onDown(e) {
+    if (e.target !== canvas) return;
     e.preventDefault();
     initAudio();
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
@@ -477,7 +1903,6 @@
     drawEnd = pos;
     drawing = true;
     pointerMoved = false;
-    pointerDownTime = performance.now();
   }
 
   function onMove(e) {
@@ -485,8 +1910,7 @@
     e.preventDefault();
     const pos = getPos(e);
     drawEnd = pos;
-    const dx = pos.x - drawStart.x, dy = pos.y - drawStart.y;
-    if (Math.hypot(dx, dy) > 5) pointerMoved = true;
+    if (Math.hypot(pos.x - drawStart.x, pos.y - drawStart.y) > 5) pointerMoved = true;
   }
 
   function onUp(e) {
@@ -495,40 +1919,40 @@
     drawing = false;
 
     if (!drawStart || !drawEnd) return;
-    const dx = drawEnd.x - drawStart.x;
-    const dy = drawEnd.y - drawStart.y;
-    const dist = Math.hypot(dx, dy);
+    const dist = Math.hypot(drawEnd.x - drawStart.x, drawEnd.y - drawStart.y);
 
     if (dist < MIN_DRAG_DIST || !pointerMoved) {
-      // It was a tap/click: spawn a ball
       createBall(drawStart.x, drawStart.y);
     } else {
-      // It was a drag: create a surface
-      surfaces.push({ x1: drawStart.x, y1: drawStart.y, x2: drawEnd.x, y2: drawEnd.y });
+      surfaces.push({
+        x1: drawStart.x, y1: drawStart.y,
+        x2: drawEnd.x, y2: drawEnd.y,
+        note: null, flashTimer: 0, hue: 190,
+        waveOffset: 0, waveTimer: 0
+      });
     }
     drawStart = null;
     drawEnd = null;
   }
 
-  // Mouse events
   canvas.addEventListener('mousedown', onDown);
   canvas.addEventListener('mousemove', onMove);
   canvas.addEventListener('mouseup', onUp);
-
-  // Touch events
   canvas.addEventListener('touchstart', onDown, { passive: false });
   canvas.addEventListener('touchmove', onMove, { passive: false });
   canvas.addEventListener('touchend', onUp, { passive: false });
 
-  // --- UI ---
+  /* ============================================================
+     UI EVENT HANDLERS
+  ============================================================ */
+  document.getElementById('btn-play').addEventListener('click', (e) => {
+    e.stopPropagation();
+    togglePlay();
+  });
+
   document.getElementById('btn-clear').addEventListener('click', (e) => {
     e.stopPropagation();
-    balls = [];
-    surfaces = [];
-    particles = [];
-    // Full clear of canvas
-    ctx.fillStyle = '#0a0a0f';
-    ctx.fillRect(0, 0, W, H);
+    loadPreset(currentPreset);
   });
 
   document.getElementById('btn-help').addEventListener('click', (e) => {
@@ -547,10 +1971,23 @@
   });
   document.getElementById('overlay').addEventListener('click', closeHelp);
 
-  // --- Start ---
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      loadPreset(btn.dataset.preset);
+    });
+  });
+
+  /* ============================================================
+     INIT
+  ============================================================ */
   ctx.fillStyle = '#0a0a0f';
   ctx.fillRect(0, 0, W, H);
+  loadPreset('twinkle');
   loop();
+
 })();
 </script>
 </body>
