@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>RUBE - Rube Goldberg Music Machine</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0f; }
+  canvas { display: block; touch-action: none; }
+  #ui {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 16px; pointer-events: none; z-index: 10;
+  }
+  #ui > * { pointer-events: auto; }
+  .btn {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.7);
+    font: 14px/1 'Segoe UI', system-ui, sans-serif;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background 0.2s, color 0.2s;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .btn:hover { background: rgba(255,255,255,0.13); color: #fff; }
+  .btn-back { font-size: 18px; padding: 6px 12px; text-decoration: none; display: inline-block; }
+  .btn-group { display: flex; gap: 8px; }
+  #help-panel {
+    display: none;
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(10, 10, 20, 0.95);
+    border: 1px solid rgba(100, 200, 255, 0.2);
+    border-radius: 16px;
+    padding: 32px;
+    color: rgba(255,255,255,0.85);
+    font: 15px/1.7 'Segoe UI', system-ui, sans-serif;
+    max-width: 380px;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 0 60px rgba(100, 200, 255, 0.08);
+  }
+  #help-panel h2 {
+    font-size: 20px; margin-bottom: 16px;
+    color: rgba(100, 200, 255, 0.9);
+    font-weight: 600;
+  }
+  #help-panel kbd {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 13px;
+  }
+  #help-panel .close-help {
+    margin-top: 20px;
+    width: 100%;
+  }
+  #overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 99;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="ui">
+  <a href="/justplay/" class="btn btn-back" title="Back">&larr;</a>
+  <div class="btn-group">
+    <button class="btn" id="btn-clear">Clear</button>
+    <button class="btn" id="btn-help">?</button>
+  </div>
+</div>
+
+<div id="overlay"></div>
+<div id="help-panel">
+  <h2>Rube Goldberg Music Machine</h2>
+  <p><kbd>Click</kbd> &mdash; Spawn a ball</p>
+  <p><kbd>Click + Drag</kbd> &mdash; Draw a ramp/surface</p>
+  <p>Balls fall with gravity and bounce off surfaces, walls, and each other.</p>
+  <p>Every collision plays a pentatonic note &mdash; pitch and volume scale with impact force.</p>
+  <p>Draw ramps to guide balls and create musical chains.</p>
+  <button class="btn close-help" id="btn-close-help">Got it</button>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  // --- Canvas setup ---
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  let W, H;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // --- Constants ---
+  const GRAVITY = 0.3;
+  const BOUNCE = 0.7;
+  const FRICTION = 0.99;
+  const TRAIL_ALPHA = 0.15;
+  const MAX_BALLS = 200;
+  const MAX_OSCILLATORS = 8;
+  const MIN_DRAG_DIST = 15;
+  const BALL_MIN_R = 8;
+  const BALL_MAX_R = 15;
+
+  // --- State ---
+  let balls = [];
+  let surfaces = [];
+  let particles = [];
+  let activeOscCount = 0;
+  let drawing = false;
+  let drawStart = null;
+  let drawEnd = null;
+  let spawnPending = false;
+  let pointerDownTime = 0;
+  let pointerMoved = false;
+
+  // --- Pentatonic scale frequencies (C, D, E, G, A) across 3 octaves ---
+  const BASE_NOTES = [261.63, 293.66, 329.63, 392.00, 440.00]; // C4, D4, E4, G4, A4
+  const PENTA = [];
+  for (let oct = -1; oct <= 1; oct++) {
+    for (const f of BASE_NOTES) {
+      PENTA.push(f * Math.pow(2, oct));
+    }
+  }
+  // PENTA spans C3..A5
+
+  // --- Web Audio ---
+  let audioCtx = null;
+  let delayNode = null;
+  let delayGain = null;
+
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Delay/reverb effect
+    delayNode = audioCtx.createDelay(0.5);
+    delayNode.delayTime.value = 0.25;
+    delayGain = audioCtx.createGain();
+    delayGain.gain.value = 0.2;
+    delayNode.connect(delayGain);
+    delayGain.connect(delayNode);
+    delayGain.connect(audioCtx.destination);
+  }
+
+  function playNote(velocity, force) {
+    if (!audioCtx) return;
+    if (activeOscCount >= MAX_OSCILLATORS) return;
+
+    // Map velocity to note index
+    const speed = Math.sqrt(velocity);
+    const idx = Math.min(PENTA.length - 1, Math.max(0, Math.floor((speed / 12) * PENTA.length)));
+    const freq = PENTA[idx];
+
+    // Volume from force, clamped
+    const vol = Math.min(0.35, Math.max(0.03, force / 25));
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+
+    const now = audioCtx.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(vol, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(vol * 0.3, now + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    gain.connect(delayNode);
+
+    osc.start(now);
+    osc.stop(now + 0.4);
+
+    activeOscCount++;
+    osc.onended = () => { activeOscCount--; };
+  }
+
+  // --- Ball ---
+  function createBall(x, y) {
+    if (balls.length >= MAX_BALLS) return;
+    const r = BALL_MIN_R + Math.random() * (BALL_MAX_R - BALL_MIN_R);
+    balls.push({
+      x, y, r,
+      vx: (Math.random() - 0.5) * 2,
+      vy: 0,
+      hue: Math.random() * 360,
+      life: 1
+    });
+  }
+
+  // --- Particles ---
+  function spawnParticles(x, y, hue, count) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1 + Math.random() * 3;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.03 + Math.random() * 0.04,
+        hue: hue + (Math.random() - 0.5) * 40,
+        r: 1 + Math.random() * 2
+      });
+    }
+  }
+
+  // --- Physics helpers ---
+  function pointToSegmentDist(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    if (len2 === 0) return { dist: Math.hypot(px - ax, py - ay), nx: 0, ny: -1, cx: ax, cy: ay };
+    let t = ((px - ax) * dx + (py - ay) * dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    const cx = ax + t * dx, cy = ay + t * dy;
+    const distX = px - cx, distY = py - cy;
+    const dist = Math.hypot(distX, distY);
+    // Normal pointing from segment toward point
+    const nx = dist > 0 ? distX / dist : 0;
+    const ny = dist > 0 ? distY / dist : -1;
+    return { dist, nx, ny, cx, cy };
+  }
+
+  // --- Update ---
+  function update() {
+    // Update balls
+    for (let i = balls.length - 1; i >= 0; i--) {
+      const b = balls[i];
+
+      // Gravity
+      b.vy += GRAVITY;
+
+      // Friction
+      b.vx *= FRICTION;
+      b.vy *= FRICTION;
+
+      // Move
+      b.x += b.vx;
+      b.y += b.vy;
+
+      // Velocity-based hue: slow=blue(220), fast=red/orange(0-30)
+      const speed = Math.hypot(b.vx, b.vy);
+      const t = Math.min(1, speed / 15);
+      b.hue = 220 - t * 200; // 220 (blue) -> 20 (orange)
+      if (b.hue < 0) b.hue += 360;
+
+      // Wall collisions
+      if (b.x - b.r < 0) {
+        b.x = b.r;
+        b.vx = Math.abs(b.vx) * BOUNCE;
+        const imp = Math.abs(b.vx);
+        if (imp > 1.5) {
+          playNote(speed * speed, imp);
+          spawnParticles(b.x, b.y, b.hue, 3);
+        }
+      }
+      if (b.x + b.r > W) {
+        b.x = W - b.r;
+        b.vx = -Math.abs(b.vx) * BOUNCE;
+        const imp = Math.abs(b.vx);
+        if (imp > 1.5) {
+          playNote(speed * speed, imp);
+          spawnParticles(b.x, b.y, b.hue, 3);
+        }
+      }
+      if (b.y - b.r < 0) {
+        b.y = b.r;
+        b.vy = Math.abs(b.vy) * BOUNCE;
+      }
+      if (b.y + b.r > H) {
+        b.y = H - b.r;
+        b.vy = -Math.abs(b.vy) * BOUNCE;
+        const imp = Math.abs(b.vy);
+        if (imp > 1.5) {
+          playNote(speed * speed, imp);
+          spawnParticles(b.x, b.y, b.hue, 3);
+        }
+      }
+
+      // Surface collisions
+      for (const s of surfaces) {
+        const { dist, nx, ny } = pointToSegmentDist(b.x, b.y, s.x1, s.y1, s.x2, s.y2);
+        if (dist < b.r) {
+          // Push out
+          const overlap = b.r - dist;
+          b.x += nx * overlap;
+          b.y += ny * overlap;
+
+          // Reflect velocity
+          const dot = b.vx * nx + b.vy * ny;
+          if (dot < 0) {
+            b.vx -= (1 + BOUNCE) * dot * nx;
+            b.vy -= (1 + BOUNCE) * dot * ny;
+            const imp = Math.abs(dot);
+            if (imp > 1) {
+              playNote(speed * speed, imp);
+              spawnParticles(b.x - nx * b.r, b.y - ny * b.r, b.hue, 4);
+            }
+          }
+        }
+      }
+
+      // Remove balls that are nearly stopped at the bottom for a long time
+      // (optional cleanup — skip for now, they just pile up which is fun)
+    }
+
+    // Ball-to-ball collisions
+    for (let i = 0; i < balls.length; i++) {
+      for (let j = i + 1; j < balls.length; j++) {
+        const a = balls[i], b = balls[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = a.r + b.r;
+        if (dist < minDist && dist > 0) {
+          // Normal
+          const nx = dx / dist, ny = dy / dist;
+
+          // Separate
+          const overlap = (minDist - dist) / 2;
+          a.x -= nx * overlap;
+          a.y -= ny * overlap;
+          b.x += nx * overlap;
+          b.y += ny * overlap;
+
+          // Elastic collision (mass proportional to radius^2)
+          const massA = a.r * a.r;
+          const massB = b.r * b.r;
+          const totalMass = massA + massB;
+
+          const dvx = a.vx - b.vx, dvy = a.vy - b.vy;
+          const dvDotN = dvx * nx + dvy * ny;
+
+          if (dvDotN > 0) {
+            const impulse = (2 * dvDotN) / totalMass;
+            a.vx -= impulse * massB * nx * BOUNCE;
+            a.vy -= impulse * massB * ny * BOUNCE;
+            b.vx += impulse * massA * nx * BOUNCE;
+            b.vy += impulse * massA * ny * BOUNCE;
+
+            const imp = Math.abs(dvDotN);
+            if (imp > 1) {
+              const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+              const avgHue = (a.hue + b.hue) / 2;
+              playNote(imp * imp, imp);
+              spawnParticles(cx, cy, avgHue, 5);
+            }
+          }
+        }
+      }
+    }
+
+    // Update particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.05; // tiny gravity on sparks
+      p.life -= p.decay;
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+      }
+    }
+  }
+
+  // --- Draw ---
+  function draw() {
+    // Trail effect: semi-transparent overlay
+    ctx.fillStyle = `rgba(10, 10, 15, ${TRAIL_ALPHA})`;
+    ctx.fillRect(0, 0, W, H);
+
+    // Draw surfaces
+    ctx.lineCap = 'round';
+    for (const s of surfaces) {
+      ctx.save();
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = 'rgba(100, 220, 255, 0.6)';
+      ctx.strokeStyle = 'rgba(100, 220, 255, 0.7)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(s.x1, s.y1);
+      ctx.lineTo(s.x2, s.y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Draw current line being drawn
+    if (drawing && drawStart && drawEnd) {
+      ctx.save();
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = 'rgba(100, 220, 255, 0.4)';
+      ctx.strokeStyle = 'rgba(100, 220, 255, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(drawStart.x, drawStart.y);
+      ctx.lineTo(drawEnd.x, drawEnd.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Draw particles
+    for (const p of particles) {
+      ctx.save();
+      ctx.globalAlpha = p.life;
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = `hsla(${p.hue}, 100%, 65%, ${p.life})`;
+      ctx.fillStyle = `hsla(${p.hue}, 100%, 70%, ${p.life})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Draw balls
+    for (const b of balls) {
+      const speed = Math.hypot(b.vx, b.vy);
+      const glow = Math.min(25, 8 + speed * 2);
+      ctx.save();
+      ctx.shadowBlur = glow;
+      ctx.shadowColor = `hsla(${b.hue}, 100%, 60%, 0.8)`;
+      ctx.fillStyle = `hsla(${b.hue}, 90%, 60%, 0.9)`;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Inner bright core
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = `hsla(${b.hue}, 80%, 85%, 0.5)`;
+      ctx.beginPath();
+      ctx.arc(b.x - b.r * 0.2, b.y - b.r * 0.2, b.r * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // --- Main loop ---
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // --- Input handling ---
+  function getPos(e) {
+    if (e.touches && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  function onDown(e) {
+    e.preventDefault();
+    initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    const pos = getPos(e);
+    drawStart = pos;
+    drawEnd = pos;
+    drawing = true;
+    pointerMoved = false;
+    pointerDownTime = performance.now();
+  }
+
+  function onMove(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    drawEnd = pos;
+    const dx = pos.x - drawStart.x, dy = pos.y - drawStart.y;
+    if (Math.hypot(dx, dy) > 5) pointerMoved = true;
+  }
+
+  function onUp(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    drawing = false;
+
+    if (!drawStart || !drawEnd) return;
+    const dx = drawEnd.x - drawStart.x;
+    const dy = drawEnd.y - drawStart.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < MIN_DRAG_DIST || !pointerMoved) {
+      // It was a tap/click: spawn a ball
+      createBall(drawStart.x, drawStart.y);
+    } else {
+      // It was a drag: create a surface
+      surfaces.push({ x1: drawStart.x, y1: drawStart.y, x2: drawEnd.x, y2: drawEnd.y });
+    }
+    drawStart = null;
+    drawEnd = null;
+  }
+
+  // Mouse events
+  canvas.addEventListener('mousedown', onDown);
+  canvas.addEventListener('mousemove', onMove);
+  canvas.addEventListener('mouseup', onUp);
+
+  // Touch events
+  canvas.addEventListener('touchstart', onDown, { passive: false });
+  canvas.addEventListener('touchmove', onMove, { passive: false });
+  canvas.addEventListener('touchend', onUp, { passive: false });
+
+  // --- UI ---
+  document.getElementById('btn-clear').addEventListener('click', (e) => {
+    e.stopPropagation();
+    balls = [];
+    surfaces = [];
+    particles = [];
+    // Full clear of canvas
+    ctx.fillStyle = '#0a0a0f';
+    ctx.fillRect(0, 0, W, H);
+  });
+
+  document.getElementById('btn-help').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('help-panel').style.display = 'block';
+    document.getElementById('overlay').style.display = 'block';
+  });
+
+  function closeHelp() {
+    document.getElementById('help-panel').style.display = 'none';
+    document.getElementById('overlay').style.display = 'none';
+  }
+  document.getElementById('btn-close-help').addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeHelp();
+  });
+  document.getElementById('overlay').addEventListener('click', closeHelp);
+
+  // --- Start ---
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, W, H);
+  loop();
+})();
+</script>
+</body>
+</html>

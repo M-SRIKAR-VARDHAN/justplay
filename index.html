@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>justplay</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .hero {
+    text-align: center;
+    padding: 80px 20px 40px;
+  }
+  .hero h1 {
+    font-size: 4rem;
+    font-weight: 900;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #00f0ff, #ff00e6, #ffe600);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p {
+    margin-top: 16px;
+    font-size: 1.2rem;
+    color: #888;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 0 24px 80px;
+  }
+  .card {
+    position: relative;
+    background: #13131a;
+    border: 1px solid #222;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.3s, box-shadow 0.3s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: #444;
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.1);
+  }
+  .card-preview {
+    height: 180px;
+    background: #0d0d14;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-preview canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+  .card-body {
+    padding: 20px;
+  }
+  .card-body h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .card-body p {
+    font-size: 0.9rem;
+    color: #777;
+    line-height: 1.5;
+  }
+  .tag {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .tag-live { background: #0a2a1a; color: #00ff88; }
+  .tag-soon { background: #2a2a0a; color: #ffe600; }
+
+  .footer {
+    text-align: center;
+    padding: 40px 20px;
+    color: #444;
+    font-size: 0.85rem;
+  }
+  .footer a {
+    color: #666;
+    text-decoration: none;
+  }
+  .footer a:hover { color: #aaa; }
+
+  @media (max-width: 600px) {
+    .hero h1 { font-size: 2.5rem; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>justplay</h1>
+  <p>7 impossible things running in your browser. No signup. No install. Just play.</p>
+</div>
+
+<div class="grid">
+
+  <a class="card" href="site/experiments/rube/">
+    <div class="card-preview" id="preview-rube"></div>
+    <div class="card-body">
+      <h2>RUBE</h2>
+      <p>A Rube Goldberg machine where every collision makes music. It always sounds good.</p>
+      <span class="tag tag-live">play now</span>
+    </div>
+  </a>
+
+  <a class="card" style="pointer-events:none; opacity:0.5;">
+    <div class="card-preview"></div>
+    <div class="card-body">
+      <h2>DRIP</h2>
+      <p>Paint with physics. Every drip, splash, and accident is beautiful. Tilt your phone.</p>
+      <span class="tag tag-soon">coming soon</span>
+    </div>
+  </a>
+
+  <a class="card" style="pointer-events:none; opacity:0.5;">
+    <div class="card-preview"></div>
+    <div class="card-body">
+      <h2>GENESIS</h2>
+      <p>Open the page. Black void. Wait 60 seconds. Life appears.</p>
+      <span class="tag tag-soon">coming soon</span>
+    </div>
+  </a>
+
+  <a class="card" style="pointer-events:none; opacity:0.5;">
+    <div class="card-preview"></div>
+    <div class="card-body">
+      <h2>WEB</h2>
+      <p>A harp made of light. Pluck it. Hear music ripple across the screen.</p>
+      <span class="tag tag-soon">coming soon</span>
+    </div>
+  </a>
+
+  <a class="card" style="pointer-events:none; opacity:0.5;">
+    <div class="card-preview"></div>
+    <div class="card-body">
+      <h2>GHOST LIFE</h2>
+      <p>Conway's Game of Life, but every generation is a painting.</p>
+      <span class="tag tag-soon">coming soon</span>
+    </div>
+  </a>
+
+  <a class="card" style="pointer-events:none; opacity:0.5;">
+    <div class="card-preview"></div>
+    <div class="card-body">
+      <h2>SWARM</h2>
+      <p>Verlet-physics worms that build highway systems from pheromone trails.</p>
+      <span class="tag tag-soon">coming soon</span>
+    </div>
+  </a>
+
+  <a class="card" style="pointer-events:none; opacity:0.5;">
+    <div class="card-preview"></div>
+    <div class="card-body">
+      <h2>WEATHER</h2>
+      <p>A planet's entire water cycle running live in one tab.</p>
+      <span class="tag tag-soon">coming soon</span>
+    </div>
+  </a>
+
+</div>
+
+<div class="footer">
+  <a href="https://github.com/M-SRIKAR-VARDHAN/justplay">source code</a> · MIT license · zero dependencies
+</div>
+
+<script>
+// Mini animated preview for RUBE card
+(function() {
+  const container = document.getElementById('preview-rube');
+  if (!container) return;
+  const canvas = document.createElement('canvas');
+  container.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  let W, H;
+  function resize() {
+    const r = container.getBoundingClientRect();
+    W = canvas.width = r.width * 2;
+    H = canvas.height = r.height * 2;
+  }
+  resize();
+
+  const balls = [];
+  const surfaces = [
+    { x1: W*0.1, y1: H*0.35, x2: W*0.45, y2: H*0.5 },
+    { x1: W*0.55, y1: H*0.55, x2: W*0.9, y2: H*0.4 },
+    { x1: W*0.2, y1: H*0.75, x2: W*0.7, y2: H*0.85 },
+  ];
+
+  function spawnBall() {
+    balls.push({
+      x: W*0.15 + Math.random()*W*0.7,
+      y: -10,
+      vx: (Math.random()-0.5)*2,
+      vy: Math.random()*2,
+      r: 4 + Math.random()*4,
+      hue: Math.random()*360
+    });
+    if (balls.length > 25) balls.shift();
+  }
+
+  function pointToSeg(px,py,x1,y1,x2,y2) {
+    const dx=x2-x1, dy=y2-y1, len2=dx*dx+dy*dy;
+    let t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/len2));
+    return {x:x1+t*dx, y:y1+t*dy};
+  }
+
+  let frame = 0;
+  function loop() {
+    requestAnimationFrame(loop);
+    ctx.fillStyle = 'rgba(10,10,15,0.25)';
+    ctx.fillRect(0,0,W,H);
+
+    // surfaces
+    ctx.strokeStyle = 'rgba(0,240,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = '#00f0ff';
+    surfaces.forEach(s => {
+      ctx.beginPath();
+      ctx.moveTo(s.x1,s.y1);
+      ctx.lineTo(s.x2,s.y2);
+      ctx.stroke();
+    });
+    ctx.shadowBlur = 0;
+
+    // balls
+    balls.forEach(b => {
+      b.vy += 0.25;
+      b.vx *= 0.999;
+      b.x += b.vx;
+      b.y += b.vy;
+      let speed = Math.sqrt(b.vx*b.vx+b.vy*b.vy);
+      b.hue = 200 - speed*8;
+
+      // walls
+      if (b.x < b.r) { b.x=b.r; b.vx*=-0.7; }
+      if (b.x > W-b.r) { b.x=W-b.r; b.vx*=-0.7; }
+      if (b.y > H-b.r) { b.y=H-b.r; b.vy*=-0.7; }
+
+      // surface collision
+      surfaces.forEach(s => {
+        const c = pointToSeg(b.x,b.y,s.x1,s.y1,s.x2,s.y2);
+        const dx=b.x-c.x, dy=b.y-c.y, dist=Math.sqrt(dx*dx+dy*dy);
+        if (dist < b.r+2) {
+          const nx=dx/dist, ny=dy/dist;
+          const dot = b.vx*nx+b.vy*ny;
+          b.vx -= 2*dot*nx*0.7;
+          b.vy -= 2*dot*ny*0.7;
+          b.x = c.x+nx*(b.r+3);
+          b.y = c.y+ny*(b.r+3);
+        }
+      });
+
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = `hsl(${b.hue},100%,60%)`;
+      ctx.fillStyle = `hsl(${b.hue},100%,60%)`;
+      ctx.beginPath();
+      ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    frame++;
+    if (frame % 30 === 0) spawnBall();
+  }
+  loop();
+})();
+</script>
+
+</body>
+</html>
